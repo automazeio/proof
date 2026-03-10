@@ -1,7 +1,19 @@
 import { spawn } from "child_process";
-import { writeFile } from "fs/promises";
+import { readFile } from "fs/promises";
 import { join } from "path";
 import type { CaptureOptions, Recording } from "../types";
+
+async function getCastDuration(castPath: string): Promise<number> {
+  try {
+    const content = await readFile(castPath, "utf-8");
+    const lines = content.trim().split("\n");
+    if (lines.length < 2) return 0;
+    const lastLine = JSON.parse(lines[lines.length - 1]);
+    return Math.round((lastLine[0] ?? 0) * 1000);
+  } catch {
+    return 0;
+  }
+}
 
 export async function captureTerminal(
   options: CaptureOptions,
@@ -25,6 +37,7 @@ export async function captureTerminal(
     proc.on("error", (err) => reject(err));
   });
 
+  const duration = await getCastDuration(castPath);
   let finalPath = castPath;
 
   if (config.convertToGif) {
@@ -32,7 +45,7 @@ export async function captureTerminal(
     try {
       await new Promise<void>((resolve, reject) => {
         const proc = spawn("agg", [castPath, gifPath], { stdio: "pipe" });
-        proc.on("close", () => resolve());
+        proc.on("close", (code) => code === 0 ? resolve() : reject(new Error("agg failed")));
         proc.on("error", (err) => reject(err));
       });
       finalPath = gifPath;
@@ -44,7 +57,7 @@ export async function captureTerminal(
   return {
     path: finalPath,
     mode: "terminal",
-    duration: 0,
+    duration,
     label,
   };
 }

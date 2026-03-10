@@ -15,10 +15,15 @@
 - [x] `Proof` class with public API
 
 ### Phase 2 — Recording Quality
-- [ ] Use Playwright Node API directly (replace subprocess shelling)
-- [ ] Video duration extraction
-- [ ] Artifact storage with run-id folders
-- [ ] Cleanup / retention API
+- [x] Use Playwright Node API directly (replace subprocess shelling)
+- [x] Video duration extraction (ffprobe for video, .cast parsing for terminal)
+- [x] Artifact storage with run-id folders
+- [x] Cleanup / retention API
+
+### Phase 2.5 — Terminal Recording (asciinema)
+- [ ] Verify asciinema + agg availability detection
+- [ ] Proper .cast file recording for non-UI workflows
+- [ ] Gif conversion with fallback if agg is missing
 
 ### Phase 3 — GitHub Integration
 - [ ] Upload video assets to GitHub (not just path refs)
