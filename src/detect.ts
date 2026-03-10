@@ -31,10 +31,6 @@ export async function detectMode(projectDir: string): Promise<Exclude<RecordingM
     } catch {}
   }
 
-  const asciinemaConfig = join(projectDir, ".asciinema");
-  if (existsSync(asciinemaConfig)) {
-    return "terminal";
-  }
-
-  return "test-output";
+  // No visual framework detected — fall back to terminal capture via `script`
+  return "terminal";
 }

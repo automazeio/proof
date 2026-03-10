@@ -20,10 +20,11 @@
 - [x] Artifact storage with run-id folders
 - [x] Cleanup / retention API
 
-### Phase 2.5 — Terminal Recording (asciinema)
-- [ ] Verify asciinema + agg availability detection
-- [ ] Proper .cast file recording for non-UI workflows
-- [ ] Gif conversion with fallback if agg is missing
+### Phase 2.5 — Terminal Recording
+- [x] Replace asciinema with `script` command (zero external deps)
+- [x] PTY-based capture preserving colors and interactive output
+- [x] Auto-cleanup of `script` header/footer noise
+- [x] Simplified auto-detection (visual if Playwright, terminal otherwise)
 
 ### Phase 3 — GitHub Integration
 - [ ] Upload video assets to GitHub (not just path refs)
@@ -54,5 +55,6 @@
 - **Package:** `@varops/proof`
 - **Runtime:** Bun
 - **Playwright:** direct dependency, not peer
+- **Terminal recording:** `script` command (built into macOS/Linux, zero deps)
 - **Cross-language:** deferred; CLI wrapper if needed later
 - **Artifact storage:** `workDir/<run-id>/` layout with retention/cleanup API

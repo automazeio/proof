@@ -14,7 +14,6 @@ export interface ProofConfig {
   terminal?: {
     cols?: number;
     rows?: number;
-    convertToGif?: boolean;
   };
   github?: {
     uploadMethod?: GitHubUploadMethod;
