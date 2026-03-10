@@ -1,36 +1,53 @@
 # Status
 
-## Current State: Scaffold Complete
-
 **Last updated:** 2026-03-10
 
-### What's done
+---
 
-- [x] PRD finalized (renamed to README.md)
-- [x] Project scaffold: `package.json`, `tsconfig.json`, `.gitignore`
-- [x] Core types defined (`types.ts`)
-- [x] Mode auto-detection (`detect.ts`) — scans for Playwright config, package deps, asciinema
-- [x] Visual capture mode (`modes/visual.ts`) — runs Playwright tests, collects video
-- [x] Terminal capture mode (`modes/terminal.ts`) — asciinema recording with optional gif conversion
-- [x] Test output capture mode (`modes/output.ts`) — stdout/stderr fallback
-- [x] Main `Proof` class (`index.ts`) — capture, compare, attachToPR, attachToIssue, listRuns, cleanup
-- [x] Playwright as direct dependency (not peer)
-- [x] TypeScript compiles clean
+## Roadmap
 
-### What's next
+### Phase 1 — Scaffold & Core Types
+- [x] PRD finalized (README.md)
+- [x] Project scaffold (`package.json`, `tsconfig.json`, `.gitignore`)
+- [x] Core types (`types.ts`)
+- [x] Mode auto-detection (`detect.ts`)
+- [x] Capture modes (visual, terminal, test-output)
+- [x] `Proof` class with public API
 
-- [ ] Wire up Playwright properly (use its Node API directly instead of shelling out to `npx`)
-- [ ] Add actual video duration extraction (currently returns 0)
-- [ ] GitHub upload — upload video assets, not just path references in comments
-- [ ] Tests — unit tests for detect, capture modes, cleanup logic
-- [ ] Try it end-to-end on a real project
-- [ ] Integration with ladybug and ralph
+### Phase 2 — Recording Quality
+- [ ] Use Playwright Node API directly (replace subprocess shelling)
+- [ ] Video duration extraction
+- [ ] Artifact storage with run-id folders
+- [ ] Cleanup / retention API
 
-### Decisions made
+### Phase 3 — GitHub Integration
+- [ ] Upload video assets to GitHub (not just path refs)
+- [ ] PR comment with embedded video links
+- [ ] Issue comment attachment
+
+### Phase 4 — Testing & Reliability
+- [ ] Unit tests for detect, capture modes, cleanup
+- [ ] End-to-end test on a real project
+- [ ] Error handling & edge cases
+
+### Phase 5 — Integration
+- [ ] Wire into LadyBug
+- [ ] Wire into Ralph
+- [ ] Verify before/after comparison flow end-to-end
+
+### Future
+- [ ] CLI wrapper for cross-language usage
+- [ ] Annotated recordings
+- [ ] Video thumbnails for PR comments
+- [ ] Recording diffing
+
+---
+
+## Decisions
 
 - **Name:** proof (domain: getproof.sh)
 - **Package:** `@varops/proof`
 - **Runtime:** Bun
 - **Playwright:** direct dependency, not peer
-- **Cross-language:** deferred; will add CLI wrapper if needed later
+- **Cross-language:** deferred; CLI wrapper if needed later
 - **Artifact storage:** `workDir/<run-id>/` layout with retention/cleanup API
