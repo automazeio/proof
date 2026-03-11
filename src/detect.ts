@@ -3,16 +3,16 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import type { RecordingMode } from "./types";
 
-const VISUAL_CONFIG_PATTERNS = [
+const BROWSER_CONFIG_PATTERNS = [
   "playwright.config.ts",
   "playwright.config.js",
   "playwright.config.mjs",
 ];
 
 export async function detectMode(projectDir: string): Promise<Exclude<RecordingMode, "auto">> {
-  for (const config of VISUAL_CONFIG_PATTERNS) {
+  for (const config of BROWSER_CONFIG_PATTERNS) {
     if (existsSync(join(projectDir, config))) {
-      return "visual";
+      return "browser";
     }
   }
 
@@ -26,11 +26,10 @@ export async function detectMode(projectDir: string): Promise<Exclude<RecordingM
         ...pkg.peerDependencies,
       };
       if (allDeps["@playwright/test"] || allDeps["playwright"]) {
-        return "visual";
+        return "browser";
       }
     } catch {}
   }
 
-  // No visual framework detected — fall back to terminal capture via `script`
   return "terminal";
 }

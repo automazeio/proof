@@ -1,22 +1,16 @@
-export type RecordingMode = "visual" | "terminal" | "test-output" | "auto";
-
-export type GitHubUploadMethod = "assets" | "comment-link";
+export type RecordingMode = "browser" | "terminal" | "auto";
 
 export interface ProofConfig {
-  repo: string;
-  githubToken?: string;
-  mode?: RecordingMode;
-  workDir?: string;
-  visual?: {
+  appName: string;
+  proofDir?: string;
+  run?: string;
+  browser?: {
     viewport?: { width: number; height: number };
     videosOnFailureOnly?: boolean;
   };
   terminal?: {
     cols?: number;
     rows?: number;
-  };
-  github?: {
-    uploadMethod?: GitHubUploadMethod;
   };
   maxVideoLength?: number;
   retention?: {
@@ -32,51 +26,37 @@ export interface Recording {
   label?: string;
 }
 
-export interface CompareResult {
-  before: Recording;
-  after: Recording;
-  mode: Exclude<RecordingMode, "auto">;
-}
-
 export interface CaptureOptions {
   testFile: string;
   testName?: string;
   label?: string;
+  mode?: RecordingMode;
+  description?: string;
 }
 
-export interface CompareOptions {
+export interface ProofEntry {
+  timestamp: string;
+  mode: Exclude<RecordingMode, "auto">;
+  label?: string;
   testFile: string;
   testName?: string;
-  beforeRef: string;
-  afterRef?: string;
+  duration: number;
+  artifact: string;
+  description: string;
 }
 
-export interface AttachToPROptions {
-  prNumber: number;
-  recordings: Recording | CompareResult;
-  comment?: string;
-}
-
-export interface AttachToIssueOptions {
-  issueNumber: number;
-  recording: Recording;
-  comment?: string;
-}
-
-export interface RecordSuiteOptions {
-  command: string;
-  captureVideo?: boolean;
-  captureOutput?: boolean;
-}
-
-export interface RecordSuiteResult {
-  videos: Recording[];
-  output: string;
-  passed: boolean;
+export interface ProofManifest {
+  version: 1;
+  appName: string;
+  run: string;
+  createdAt: string;
+  entries: ProofEntry[];
 }
 
 export interface RunInfo {
   id: string;
+  date: string;
+  run: string;
   createdAt: Date;
   files: string[];
   sizeBytes: number;

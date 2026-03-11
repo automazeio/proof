@@ -1,213 +1,228 @@
-import { mkdir, readdir, rm, stat } from "fs/promises";
-import { join } from "path";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "fs/promises";
+import { join, basename } from "path";
 import { tmpdir } from "os";
+import { existsSync } from "fs";
 import { detectMode } from "./detect";
 import { captureVisual } from "./modes/visual";
 import { captureTerminal } from "./modes/terminal";
-import { captureOutput } from "./modes/output";
 import type {
   ProofConfig,
   Recording,
-  CompareResult,
   CaptureOptions,
-  CompareOptions,
-  AttachToPROptions,
-  AttachToIssueOptions,
-  RecordSuiteOptions,
-  RecordSuiteResult,
   RunInfo,
   CleanupOptions,
   RecordingMode,
+  ProofManifest,
+  ProofEntry,
 } from "./types";
 
 export type {
   ProofConfig,
   Recording,
-  CompareResult,
   CaptureOptions,
-  CompareOptions,
-  AttachToPROptions,
-  AttachToIssueOptions,
-  RecordSuiteOptions,
-  RecordSuiteResult,
   RunInfo,
   CleanupOptions,
   RecordingMode,
+  ProofManifest,
+  ProofEntry,
 };
+
+export { getCursorHighlightScript } from "./modes/visual";
 
 export class Proof {
   private config: ProofConfig;
-  private workDir: string;
+  private runDir: string;
+  private runName: string;
+  private initTime: Date;
 
   constructor(config: ProofConfig) {
     this.config = {
-      mode: "auto",
       maxVideoLength: 30,
       ...config,
     };
-    this.workDir =
-      config.workDir ??
-      process.env.PROOF_WORK_DIR ??
-      join(tmpdir(), "proof");
+    this.initTime = new Date();
+
+    const root = config.proofDir ?? process.env.PROOF_DIR ?? join(tmpdir(), "proof");
+    const dateStr = this.formatDate(this.initTime);
+    this.runName = config.run ?? this.formatTime(this.initTime);
+    this.runDir = join(root, config.appName, dateStr, this.runName);
   }
 
-  private generateRunId(): string {
-    const now = new Date();
+  private formatDate(d: Date): string {
     const pad = (n: number) => String(n).padStart(2, "0");
-    return [
-      now.getFullYear(),
-      pad(now.getMonth() + 1),
-      pad(now.getDate()),
-      "-",
-      pad(now.getHours()),
-      pad(now.getMinutes()),
-      pad(now.getSeconds()),
-    ].join("");
+    return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+  }
+
+  private formatTime(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(d.getHours())}${pad(d.getMinutes())}`;
+  }
+
+  private formatTimestamp(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
   }
 
   private async ensureRunDir(): Promise<string> {
-    const runId = this.generateRunId();
-    const runDir = join(this.workDir, runId);
-    await mkdir(runDir, { recursive: true });
-    return runDir;
+    await mkdir(this.runDir, { recursive: true });
+    return this.runDir;
   }
 
-  private async resolveMode(): Promise<Exclude<RecordingMode, "auto">> {
+  private async resolveMode(optMode?: RecordingMode): Promise<Exclude<RecordingMode, "auto">> {
     const envMode = process.env.PROOF_MODE as RecordingMode | undefined;
-    const mode = envMode ?? this.config.mode ?? "auto";
+    const mode = optMode ?? envMode ?? "auto";
 
     if (mode !== "auto") return mode;
     return detectMode(process.cwd());
   }
 
+  private async appendToManifest(entry: ProofEntry): Promise<void> {
+    const manifestPath = join(this.runDir, "proof.json");
+    let manifest: ProofManifest;
+
+    if (existsSync(manifestPath)) {
+      const raw = await readFile(manifestPath, "utf-8");
+      manifest = JSON.parse(raw);
+      manifest.entries.push(entry);
+    } else {
+      manifest = {
+        version: 1,
+        appName: this.config.appName,
+        run: this.runName,
+        createdAt: this.initTime.toISOString(),
+        entries: [entry],
+      };
+    }
+
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");
+  }
+
   async capture(options: CaptureOptions): Promise<Recording> {
     const runDir = await this.ensureRunDir();
-    const mode = await this.resolveMode();
+    const mode = await this.resolveMode(options.mode);
+    const ts = this.formatTimestamp(new Date());
+    const label = options.label ?? mode;
+    const filePrefix = `${label}-${ts}`;
 
+    let recording: Recording;
     switch (mode) {
-      case "visual":
-        return captureVisual(options, runDir, {
-          viewport: this.config.visual?.viewport,
+      case "browser":
+        recording = await captureVisual(options, runDir, filePrefix, {
+          viewport: this.config.browser?.viewport,
           maxVideoLength: this.config.maxVideoLength,
         });
+        break;
       case "terminal":
-        return captureTerminal(
+        recording = await captureTerminal(
           options,
           runDir,
+          filePrefix,
           `bun test ${options.testFile}`,
           this.config.terminal ?? {},
         );
-      case "test-output":
-        return captureOutput(options, runDir, `bun test ${options.testFile}`);
+        break;
     }
-  }
 
-  async compare(options: CompareOptions): Promise<CompareResult> {
-    const mode = await this.resolveMode();
-    const { spawn } = await import("child_process");
+    const fallbackDescriptions: Record<Exclude<RecordingMode, "auto">, string> = {
+      browser: `Playwright browser test recording of ${basename(options.testFile)}${options.testName ? ` — test: "${options.testName}"` : ""}`,
+      terminal: `Terminal capture of ${basename(options.testFile)}${options.testName ? ` — test: "${options.testName}"` : ""}`,
+    };
 
-    const git = (args: string[]) =>
-      new Promise<void>((resolve, reject) => {
-        const proc = spawn("git", args, { stdio: "pipe" });
-        proc.on("close", (code) =>
-          code === 0 ? resolve() : reject(new Error(`git ${args.join(" ")} failed`)),
-        );
-      });
-
-    // Record before
-    await git(["stash", "--include-untracked"]);
-    await git(["checkout", options.beforeRef]);
-    const before = await this.capture({
+    const entry: ProofEntry = {
+      timestamp: new Date().toISOString(),
+      mode,
+      label,
       testFile: options.testFile,
       testName: options.testName,
-      label: "before",
-    });
+      duration: recording.duration,
+      artifact: basename(recording.path),
+      description: options.description ?? fallbackDescriptions[mode],
+    };
 
-    // Record after
-    const afterRef = options.afterRef ?? "HEAD";
-    await git(["checkout", afterRef]);
-    try {
-      await git(["stash", "pop"]);
-    } catch {}
-    const after = await this.capture({
-      testFile: options.testFile,
-      testName: options.testName,
-      label: "after",
-    });
-
-    return { before, after, mode };
+    await this.appendToManifest(entry);
+    return recording;
   }
 
-  async attachToPR(options: AttachToPROptions): Promise<void> {
-    const { Octokit } = await import("@octokit/rest");
-    const token = this.config.githubToken ?? process.env.GITHUB_TOKEN;
-    if (!token) throw new Error("GitHub token required for PR attachment");
-
-    const [owner, repo] = this.config.repo.split("/");
-    const octokit = new Octokit({ auth: token });
-
-    const isCompare = "before" in options.recordings && "after" in options.recordings;
-    let body = options.comment ? `## ${options.comment}\n\n` : "";
-
-    if (isCompare) {
-      const result = options.recordings as CompareResult;
-      body += `### Before\n\`${result.before.path}\`\n\n`;
-      body += `### After\n\`${result.after.path}\`\n\n`;
-    } else {
-      const recording = options.recordings as Recording;
-      body += `\`${recording.path}\`\n\n`;
+  async report(): Promise<string> {
+    const manifestPath = join(this.runDir, "proof.json");
+    if (!existsSync(manifestPath)) {
+      throw new Error("No proof.json found — run capture() first");
     }
-    body += `*Recorded by @varops/proof*`;
 
-    await octokit.issues.createComment({
-      owner,
-      repo,
-      issue_number: options.prNumber,
-      body,
-    });
-  }
+    const manifest: ProofManifest = JSON.parse(await readFile(manifestPath, "utf-8"));
+    const lines: string[] = [];
 
-  async attachToIssue(options: AttachToIssueOptions): Promise<void> {
-    const { Octokit } = await import("@octokit/rest");
-    const token = this.config.githubToken ?? process.env.GITHUB_TOKEN;
-    if (!token) throw new Error("GitHub token required for issue attachment");
+    lines.push(`# Proof Report`);
+    lines.push(``);
+    lines.push(`**App:** ${manifest.appName}`);
+    lines.push(`**Run:** ${manifest.run}`);
+    lines.push(`**Date:** ${new Date(manifest.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`);
+    lines.push(``);
+    lines.push(`---`);
+    lines.push(``);
 
-    const [owner, repo] = this.config.repo.split("/");
-    const octokit = new Octokit({ auth: token });
+    for (const entry of manifest.entries) {
+      const time = new Date(entry.timestamp).toLocaleTimeString("en-US", { hour12: false });
+      const modeIcon = entry.mode === "browser" ? "🌐" : "🖥";
 
-    let body = options.comment ? `## ${options.comment}\n\n` : "";
-    body += `\`${options.recording.path}\`\n\n`;
-    body += `*Recorded by @varops/proof*`;
+      lines.push(`### ${modeIcon} ${entry.label ?? entry.mode} — ${time}`);
+      lines.push(``);
+      lines.push(`${entry.description}`);
+      lines.push(``);
+      lines.push(`| | |`);
+      lines.push(`|---|---|`);
+      lines.push(`| **Mode** | ${entry.mode} |`);
+      lines.push(`| **Test** | \`${basename(entry.testFile)}\` |`);
+      if (entry.testName) {
+        lines.push(`| **Test name** | ${entry.testName} |`);
+      }
+      lines.push(`| **Duration** | ${(entry.duration / 1000).toFixed(1)}s |`);
+      lines.push(`| **Artifact** | [${entry.artifact}](./${entry.artifact}) |`);
+      lines.push(``);
+    }
 
-    await octokit.issues.createComment({
-      owner,
-      repo,
-      issue_number: options.issueNumber,
-      body,
-    });
+    lines.push(`---`);
+    lines.push(`*Generated by @varops/proof*`);
+
+    const md = lines.join("\n");
+    const reportPath = join(this.runDir, "report.md");
+    await writeFile(reportPath, md, "utf-8");
+
+    return reportPath;
   }
 
   async listRuns(): Promise<RunInfo[]> {
-    try {
-      const entries = await readdir(this.workDir, { withFileTypes: true });
-      const runs: RunInfo[] = [];
+    const root = this.config.proofDir ?? process.env.PROOF_DIR ?? join(tmpdir(), "proof");
+    const appDir = join(root, this.config.appName);
 
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-        const runPath = join(this.workDir, entry.name);
-        const files = await readdir(runPath);
-        const stats = await stat(runPath);
-        let totalSize = 0;
-        for (const file of files) {
-          const s = await stat(join(runPath, file));
-          totalSize += s.size;
+    try {
+      const runs: RunInfo[] = [];
+      const dateDirs = await readdir(appDir, { withFileTypes: true });
+
+      for (const dateEntry of dateDirs) {
+        if (!dateEntry.isDirectory()) continue;
+        const datePath = join(appDir, dateEntry.name);
+        const runDirs = await readdir(datePath, { withFileTypes: true });
+
+        for (const runEntry of runDirs) {
+          if (!runEntry.isDirectory()) continue;
+          const runPath = join(datePath, runEntry.name);
+          const files = await readdir(runPath);
+          const stats = await stat(runPath);
+          let totalSize = 0;
+          for (const file of files) {
+            const s = await stat(join(runPath, file));
+            totalSize += s.size;
+          }
+          runs.push({
+            id: `${dateEntry.name}/${runEntry.name}`,
+            date: dateEntry.name,
+            run: runEntry.name,
+            createdAt: stats.birthtime,
+            files,
+            sizeBytes: totalSize,
+          });
         }
-        runs.push({
-          id: entry.name,
-          createdAt: stats.birthtime,
-          files,
-          sizeBytes: totalSize,
-        });
       }
 
       return runs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -220,6 +235,8 @@ export class Proof {
     const maxAge = options?.maxAge ?? this.config.retention?.maxAge;
     const maxRuns = options?.maxRuns ?? this.config.retention?.maxRuns;
     const runs = await this.listRuns();
+    const root = this.config.proofDir ?? process.env.PROOF_DIR ?? join(tmpdir(), "proof");
+    const appDir = join(root, this.config.appName);
 
     const now = Date.now();
     let toKeep = [...runs];
@@ -235,7 +252,7 @@ export class Proof {
     const keepIds = new Set(toKeep.map((r) => r.id));
     for (const run of runs) {
       if (!keepIds.has(run.id)) {
-        await rm(join(this.workDir, run.id), { recursive: true, force: true });
+        await rm(join(appDir, run.id), { recursive: true, force: true });
       }
     }
   }
