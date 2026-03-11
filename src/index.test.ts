@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { Proof } from "./index";
 import { join } from "path";
-import { mkdtemp, readFile, readdir, rm, mkdir, writeFile } from "fs/promises";
+import { mkdtemp, readFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { existsSync } from "fs";
 
@@ -197,69 +197,6 @@ describe("Proof", () => {
       });
 
       expect(proof.report()).rejects.toThrow("No proof.json found");
-    });
-  });
-
-  describe("listRuns", () => {
-    test("lists runs across date directories", async () => {
-      const proof = new Proof({
-        appName: "test-app",
-        proofDir: tempDir,
-        run: "run-a",
-      });
-
-      await proof.capture({
-        testFile: join(import.meta.dir, "../test-app/cli/app.test.ts"),
-        mode: "terminal",
-        label: "test",
-      });
-
-      const runs = await proof.listRuns();
-      expect(runs.length).toBeGreaterThanOrEqual(1);
-      expect(runs[0].run).toBe("run-a");
-      expect(runs[0].files.length).toBeGreaterThan(0);
-      expect(runs[0].sizeBytes).toBeGreaterThan(0);
-    });
-
-    test("returns empty array for non-existent app", async () => {
-      const proof = new Proof({
-        appName: "nonexistent-app",
-        proofDir: tempDir,
-      });
-      const runs = await proof.listRuns();
-      expect(runs).toEqual([]);
-    });
-  });
-
-  describe("cleanup", () => {
-    test("removes runs exceeding maxRuns", async () => {
-      // Create two runs manually
-      const appDir = join(tempDir, "test-app");
-      const today = new Date();
-      const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
-      const dateDir = join(appDir, dateStr);
-
-      await mkdir(join(dateDir, "run-old"), { recursive: true });
-      await writeFile(join(dateDir, "run-old", "test.txt"), "old");
-      // Small delay so birthtime differs
-      await new Promise(r => setTimeout(r, 50));
-      await mkdir(join(dateDir, "run-new"), { recursive: true });
-      await writeFile(join(dateDir, "run-new", "test.txt"), "new");
-
-      const proof = new Proof({
-        appName: "test-app",
-        proofDir: tempDir,
-        run: "unused",
-      });
-
-      const runsBefore = await proof.listRuns();
-      expect(runsBefore).toHaveLength(2);
-
-      await proof.cleanup({ maxRuns: 1 });
-
-      const runsAfter = await proof.listRuns();
-      expect(runsAfter).toHaveLength(1);
-      expect(runsAfter[0].run).toBe("run-new");
     });
   });
 });

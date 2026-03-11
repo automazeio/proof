@@ -85,7 +85,7 @@ export async function captureVisual(
   options: CaptureOptions,
   runDir: string,
   filePrefix: string,
-  config: { viewport?: { width: number; height: number }; maxVideoLength?: number },
+  config: { viewport?: { width: number; height: number } },
 ): Promise<Recording> {
   const label = options.label ?? "recording";
   const testFile = options.testFile;
@@ -131,18 +131,11 @@ export async function captureVisual(
 
     proc.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
 
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    if (config.maxVideoLength) {
-      timeout = setTimeout(() => proc.kill("SIGTERM"), config.maxVideoLength * 1000);
-    }
-
     proc.on("close", (code) => {
       exitCode = code;
-      if (timeout) clearTimeout(timeout);
       resolve();
     });
     proc.on("error", (err) => {
-      if (timeout) clearTimeout(timeout);
       throw new Error(`Failed to run Playwright: ${err.message}. Is @playwright/test installed?`);
     });
   });

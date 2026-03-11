@@ -8,7 +8,7 @@
 
 | File | Purpose |
 |------|---------|
-| `index.ts` | `Proof` class -- capture, report, listRuns, cleanup |
+| `index.ts` | `Proof` class -- capture, report |
 | `types.ts` | All TypeScript interfaces |
 | `detect.ts` | Auto-detection: Playwright found = browser, otherwise terminal |
 | `duration.ts` | Video duration extraction via ffprobe |
@@ -20,7 +20,7 @@
 | File | What |
 |------|------|
 | `src/detect.test.ts` | Unit tests for mode auto-detection (6 tests) |
-| `src/index.test.ts` | Unit tests for Proof class: capture, manifest, report, listRuns, cleanup (11 tests) |
+| `src/index.test.ts` | Unit tests for Proof class: capture, manifest, report (8 tests) |
 | `test-app/capture-proof.ts` | E2E integration: terminal + browser capture with report generation |
 
 ### Test App (`test-app/`)
@@ -43,7 +43,8 @@
 | Player speed | Threshold table (0.1x-1x) | Based on real duration, no timestamp manipulation |
 | GitHub integration | Removed | Not the SDK's job -- belongs in the tool/agent layer |
 | Compare workflow | Removed | Opinionated git stash/checkout belongs in consumers |
-| Cursor highlights | Injected via addInitScript | CDP events bypass DOM listeners, so we use page.evaluate() for positioning |
+| Retention/cleanup | Removed | Caller's responsibility, not the SDK's |
+| maxVideoLength | Removed | Test runner owns its own timeouts |
 | Build | tsc + bun build | tsc for .d.ts declarations, bun build for bundled JS |
 
 ## What's Left

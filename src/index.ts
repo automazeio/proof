@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rm, stat, writeFile } from "fs/promises";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import { join, basename } from "path";
 import { tmpdir } from "os";
 import { existsSync } from "fs";
@@ -9,8 +9,6 @@ import type {
   ProofConfig,
   Recording,
   CaptureOptions,
-  RunInfo,
-  CleanupOptions,
   RecordingMode,
   ProofManifest,
   ProofEntry,
@@ -20,8 +18,6 @@ export type {
   ProofConfig,
   Recording,
   CaptureOptions,
-  RunInfo,
-  CleanupOptions,
   RecordingMode,
   ProofManifest,
   ProofEntry,
@@ -36,10 +32,7 @@ export class Proof {
   private initTime: Date;
 
   constructor(config: ProofConfig) {
-    this.config = {
-      maxVideoLength: 30,
-      ...config,
-    };
+    this.config = config;
     this.initTime = new Date();
 
     const root = config.proofDir ?? process.env.PROOF_DIR ?? join(tmpdir(), "proof");
@@ -109,7 +102,6 @@ export class Proof {
       case "browser":
         recording = await captureVisual(options, runDir, filePrefix, {
           viewport: this.config.browser?.viewport,
-          maxVideoLength: this.config.maxVideoLength,
         });
         break;
       case "terminal":
@@ -189,71 +181,5 @@ export class Proof {
     await writeFile(reportPath, md, "utf-8");
 
     return reportPath;
-  }
-
-  async listRuns(): Promise<RunInfo[]> {
-    const root = this.config.proofDir ?? process.env.PROOF_DIR ?? join(tmpdir(), "proof");
-    const appDir = join(root, this.config.appName);
-
-    try {
-      const runs: RunInfo[] = [];
-      const dateDirs = await readdir(appDir, { withFileTypes: true });
-
-      for (const dateEntry of dateDirs) {
-        if (!dateEntry.isDirectory()) continue;
-        const datePath = join(appDir, dateEntry.name);
-        const runDirs = await readdir(datePath, { withFileTypes: true });
-
-        for (const runEntry of runDirs) {
-          if (!runEntry.isDirectory()) continue;
-          const runPath = join(datePath, runEntry.name);
-          const files = await readdir(runPath);
-          const stats = await stat(runPath);
-          let totalSize = 0;
-          for (const file of files) {
-            const s = await stat(join(runPath, file));
-            totalSize += s.size;
-          }
-          runs.push({
-            id: `${dateEntry.name}/${runEntry.name}`,
-            date: dateEntry.name,
-            run: runEntry.name,
-            createdAt: stats.birthtime,
-            files,
-            sizeBytes: totalSize,
-          });
-        }
-      }
-
-      return runs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    } catch {
-      return [];
-    }
-  }
-
-  async cleanup(options?: CleanupOptions): Promise<void> {
-    const maxAge = options?.maxAge ?? this.config.retention?.maxAge;
-    const maxRuns = options?.maxRuns ?? this.config.retention?.maxRuns;
-    const runs = await this.listRuns();
-    const root = this.config.proofDir ?? process.env.PROOF_DIR ?? join(tmpdir(), "proof");
-    const appDir = join(root, this.config.appName);
-
-    const now = Date.now();
-    let toKeep = [...runs];
-
-    if (maxAge) {
-      toKeep = toKeep.filter((r) => now - r.createdAt.getTime() < maxAge);
-    }
-
-    if (maxRuns && toKeep.length > maxRuns) {
-      toKeep = toKeep.slice(0, maxRuns);
-    }
-
-    const keepIds = new Set(toKeep.map((r) => r.id));
-    for (const run of runs) {
-      if (!keepIds.has(run.id)) {
-        await rm(join(appDir, run.id), { recursive: true, force: true });
-      }
-    }
   }
 }

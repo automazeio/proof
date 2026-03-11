@@ -17,8 +17,6 @@ Proof (class)
   |                     appendToManifest() --> writes/updates proof.json
   |
   |-- report()         --> reads proof.json, generates report.md
-  |-- listRuns()       --> traverses proofDir/appName/date/run/ directories
-  |-- cleanup()        --> removes old runs by maxAge or maxRuns
 ```
 
 No HTTP, no events, no database. Pure filesystem I/O. Each `Proof` instance owns a single run directory.
@@ -27,7 +25,7 @@ No HTTP, no events, no database. Pure filesystem I/O. Each `Proof` instance owns
 
 ```
 src/
-  index.ts          -- Proof class: constructor, capture, report, listRuns, cleanup
+  index.ts          -- Proof class: constructor, capture, report
   types.ts          -- All interfaces: ProofConfig, CaptureOptions, Recording, ProofEntry, etc.
   detect.ts         -- Auto-detection: looks for playwright config/deps, falls back to terminal
   duration.ts       -- ffprobe wrapper to get video duration
@@ -116,7 +114,6 @@ No other runtime dependencies. Terminal capture uses only Node/Bun built-ins. AN
 - **`addInitScript` timing** -- must be called before `page.goto()`. The script itself wraps in `DOMContentLoaded` because the DOM isn't ready when init scripts execute.
 - **Terminal command is hardcoded** -- `capture()` builds the command as `bun test ${options.testFile}`. Not configurable yet.
 - **`bun.lock` changes** -- bun regenerates the lockfile format on dependency changes; the diff can be noisy.
-- **`cleanup()` and `listRuns()` are untested** -- they exist but haven't been exercised in the test-app.
 
 ## Lessons Learned
 

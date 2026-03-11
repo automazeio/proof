@@ -96,11 +96,6 @@ const proof = new Proof({
     cols: 120,               // Default: 120
     rows: 30,                // Default: 30
   },
-  maxVideoLength: 30,        // Kill browser recording after N seconds. Default: 30
-  retention: {
-    maxAge: 604800000,       // For cleanup: max age in ms
-    maxRuns: 20,             // For cleanup: max runs to keep
-  },
 });
 ```
 
@@ -124,14 +119,6 @@ const recording = await proof.capture({
 ### `proof.report()`
 
 Generates a markdown report from the run's `proof.json`. Returns the path to `report.md`.
-
-### `proof.listRuns()`
-
-Returns all runs for the configured `appName`, sorted most recent first.
-
-### `proof.cleanup(options?)`
-
-Removes old runs by `maxAge` and/or `maxRuns`. Falls back to the `retention` config if no options are passed.
 
 ## Output Structure
 

@@ -57,13 +57,6 @@ async function main() {
   const reportPath = await proof.report();
   console.log(`Report: ${reportPath}`);
 
-  // --- List runs ---
-  const runs = await proof.listRuns();
-  console.log("\n--- All runs ---");
-  for (const run of runs) {
-    console.log(`  ${run.id}: ${run.files.join(", ")} (${(run.sizeBytes / 1024).toFixed(1)}KB)`);
-  }
-
   console.log("\n=== Done. ===");
 }
 

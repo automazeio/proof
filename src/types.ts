@@ -12,11 +12,6 @@ export interface ProofConfig {
     cols?: number;
     rows?: number;
   };
-  maxVideoLength?: number;
-  retention?: {
-    maxAge?: number;
-    maxRuns?: number;
-  };
 }
 
 export interface Recording {
@@ -51,18 +46,4 @@ export interface ProofManifest {
   run: string;
   createdAt: string;
   entries: ProofEntry[];
-}
-
-export interface RunInfo {
-  id: string;
-  date: string;
-  run: string;
-  createdAt: Date;
-  files: string[];
-  sizeBytes: number;
-}
-
-export interface CleanupOptions {
-  maxAge?: number;
-  maxRuns?: number;
 }
