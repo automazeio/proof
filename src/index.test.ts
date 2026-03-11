@@ -23,7 +23,6 @@ describe("Proof", () => {
         proofDir: tempDir,
         run: "my-run",
       });
-      // Run dir is created lazily on capture, but the instance should be created
       expect(proof).toBeDefined();
     });
 
@@ -45,7 +44,7 @@ describe("Proof", () => {
       });
 
       const recording = await proof.capture({
-        testFile: join(import.meta.dir, "../test-app/cli/app.test.ts"),
+        command: `bun test ${join(import.meta.dir, "../test-app/cli/app.test.ts")}`,
         mode: "terminal",
         label: "cli",
         description: "CLI tests",
@@ -56,11 +55,9 @@ describe("Proof", () => {
       expect(recording.duration).toBeGreaterThan(0);
       expect(existsSync(recording.path)).toBe(true);
 
-      // Check .cast sibling exists
       const castPath = recording.path.replace(".html", ".cast");
       expect(existsSync(castPath)).toBe(true);
 
-      // Verify cast file is valid asciicast v2
       const castContent = await readFile(castPath, "utf-8");
       const lines = castContent.trim().split("\n");
       const header = JSON.parse(lines[0]);
@@ -69,7 +66,6 @@ describe("Proof", () => {
       expect(header.height).toBe(30);
       expect(lines.length).toBeGreaterThan(1);
 
-      // Verify event format [time, "o", data]
       const event = JSON.parse(lines[1]);
       expect(event).toHaveLength(3);
       expect(typeof event[0]).toBe("number");
@@ -85,7 +81,7 @@ describe("Proof", () => {
       });
 
       const recording = await proof.capture({
-        testFile: join(import.meta.dir, "../test-app/cli/app.test.ts"),
+        command: `bun test ${join(import.meta.dir, "../test-app/cli/app.test.ts")}`,
         mode: "terminal",
         label: "cli",
       });
@@ -96,9 +92,53 @@ describe("Proof", () => {
       expect(html).toContain("<select");
       expect(html).toContain("0.1x");
       expect(html).toContain("4x");
-      // No external script/link tags
       expect(html).not.toContain("<script src=");
       expect(html).not.toContain("<link rel=");
+    });
+
+    test("works with any command, not just bun test", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      const recording = await proof.capture({
+        command: "echo hello && echo world",
+        mode: "terminal",
+        label: "echo",
+      });
+
+      expect(recording.mode).toBe("terminal");
+      const castContent = await readFile(recording.path.replace(".html", ".cast"), "utf-8");
+      expect(castContent).toContain("hello");
+      expect(castContent).toContain("world");
+    });
+
+    test("throws if command is missing", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      expect(
+        proof.capture({ mode: "terminal", label: "fail" })
+      ).rejects.toThrow("terminal mode requires command");
+    });
+  });
+
+  describe("capture (browser mode)", () => {
+    test("throws if testFile is missing", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      expect(
+        proof.capture({ mode: "browser", label: "fail" })
+      ).rejects.toThrow("browser mode requires testFile");
     });
   });
 
@@ -111,7 +151,7 @@ describe("Proof", () => {
       });
 
       await proof.capture({
-        testFile: join(import.meta.dir, "../test-app/cli/app.test.ts"),
+        command: `bun test ${join(import.meta.dir, "../test-app/cli/app.test.ts")}`,
         mode: "terminal",
         label: "first",
         description: "First capture",
@@ -130,6 +170,7 @@ describe("Proof", () => {
       expect(manifest.entries[0].label).toBe("first");
       expect(manifest.entries[0].description).toBe("First capture");
       expect(manifest.entries[0].mode).toBe("terminal");
+      expect(manifest.entries[0].command).toContain("bun test");
     });
 
     test("appends entries on subsequent captures", async () => {
@@ -139,14 +180,16 @@ describe("Proof", () => {
         run: "test-run",
       });
 
+      const testCmd = `bun test ${join(import.meta.dir, "../test-app/cli/app.test.ts")}`;
+
       await proof.capture({
-        testFile: join(import.meta.dir, "../test-app/cli/app.test.ts"),
+        command: testCmd,
         mode: "terminal",
         label: "first",
       });
 
       await proof.capture({
-        testFile: join(import.meta.dir, "../test-app/cli/app.test.ts"),
+        command: testCmd,
         mode: "terminal",
         label: "second",
       });
@@ -170,7 +213,7 @@ describe("Proof", () => {
       });
 
       await proof.capture({
-        testFile: join(import.meta.dir, "../test-app/cli/app.test.ts"),
+        command: `bun test ${join(import.meta.dir, "../test-app/cli/app.test.ts")}`,
         mode: "terminal",
         label: "cli-tests",
         description: "CLI test suite",

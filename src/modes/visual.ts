@@ -82,7 +82,7 @@ const CURSOR_HIGHLIGHT_SCRIPT = `
 `;
 
 export async function captureVisual(
-  options: CaptureOptions,
+  options: CaptureOptions & { testFile: string },
   runDir: string,
   filePrefix: string,
   config: { viewport?: { width: number; height: number } },

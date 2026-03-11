@@ -6,7 +6,6 @@ export interface ProofConfig {
   run?: string;
   browser?: {
     viewport?: { width: number; height: number };
-    videosOnFailureOnly?: boolean;
   };
   terminal?: {
     cols?: number;
@@ -22,7 +21,8 @@ export interface Recording {
 }
 
 export interface CaptureOptions {
-  testFile: string;
+  command?: string;
+  testFile?: string;
   testName?: string;
   label?: string;
   mode?: RecordingMode;
@@ -33,7 +33,8 @@ export interface ProofEntry {
   timestamp: string;
   mode: Exclude<RecordingMode, "auto">;
   label?: string;
-  testFile: string;
+  command?: string;
+  testFile?: string;
   testName?: string;
   duration: number;
   artifact: string;

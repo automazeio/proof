@@ -2,7 +2,7 @@
 
 ## Overview
 
-A TypeScript capture SDK that records visual evidence of test execution. Two modes: **browser** (Playwright video with cursor highlights) and **terminal** (asciicast recording with self-contained HTML player). No opinions on workflow -- just captures proof that something happened. Consumers are expected to be tools, agents, or CI scripts that call `capture()` after running tests.
+A TypeScript capture SDK and CLI that records visual evidence of test execution. Two modes: **browser** (Playwright video with cursor highlights) and **terminal** (asciicast recording with self-contained HTML player). No opinions on workflow -- just captures proof that something happened. Consumers are expected to be tools, agents, CI scripts, or non-JS SDKs that call the CLI.
 
 ## Architecture
 
@@ -26,6 +26,7 @@ No HTTP, no events, no database. Pure filesystem I/O. Each `Proof` instance owns
 ```
 src/
   index.ts          -- Proof class: constructor, capture, report
+  cli.ts            -- CLI entry point: arg parsing, JSON stdin, structured JSON output
   types.ts          -- All interfaces: ProofConfig, CaptureOptions, Recording, ProofEntry, etc.
   detect.ts         -- Auto-detection: looks for playwright config/deps, falls back to terminal
   duration.ts       -- ffprobe wrapper to get video duration
@@ -79,6 +80,12 @@ proofDir/appName/yyyymmdd/run/
 2. Check package.json for `@playwright/test` or `playwright` dep -> browser
 3. Fallback -> terminal
 
+### CLI (cli.ts)
+- **Arg mode:** `proof capture --app <name> --command <cmd> [options]`
+- **JSON mode:** `echo '{"action":"capture",...}' | proof --json` -- supports multiple captures in one invocation
+- All output is JSON to stdout (machine-readable for other SDKs)
+- CLI uses the same `Proof` class internally
+
 ## Key Patterns & Conventions
 
 - **Bun runtime** -- uses `bun test`, `bun run`, `bun build`
@@ -112,7 +119,8 @@ No other runtime dependencies. Terminal capture uses only Node/Bun built-ins. AN
 - **Playwright video location** -- Playwright writes test-results relative to its config's project root, not cwd. The `--output` flag is critical to control where videos land.
 - **CDP bypasses DOM events** -- `page.mouse.move()` and `page.click()` in headless Playwright don't trigger `addEventListener('mousemove')`. The cursor highlight in `orders.spec.ts` uses `page.evaluate()` to directly position the cursor element.
 - **`addInitScript` timing** -- must be called before `page.goto()`. The script itself wraps in `DOMContentLoaded` because the DOM isn't ready when init scripts execute.
-- **Terminal command is hardcoded** -- `capture()` builds the command as `bun test ${options.testFile}`. Not configurable yet.
+- **Terminal command is caller-provided** -- `capture()` requires `command` for terminal mode. The SDK doesn't know or care what test runner you use.
+- **Browser mode requires `testFile`** -- the SDK controls the Playwright invocation (video output dir, reporter, config path).
 - **`bun.lock` changes** -- bun regenerates the lockfile format on dependency changes; the diff can be noisy.
 
 ## Lessons Learned

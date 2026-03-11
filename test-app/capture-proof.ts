@@ -17,7 +17,7 @@ async function main() {
   console.log("--- Capturing CLI proof (terminal mode) ---\n");
 
   const cliResult = await proof.capture({
-    testFile: join(import.meta.dir, "cli/app.test.ts"),
+    command: `bun test ${join(import.meta.dir, "cli/app.test.ts")}`,
     mode: "terminal",
     label: "cli-tests",
     description: "CLI app: status, order, and error handling tests",

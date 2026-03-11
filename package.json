@@ -11,11 +11,14 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "bin": {
+    "proof": "./dist/cli.js"
+  },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc && bun build ./src/index.ts --outdir ./dist --target node",
+    "build": "tsc && bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/cli.ts --outdir ./dist --target node",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "test": "bun test",

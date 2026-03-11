@@ -99,31 +99,41 @@ export class Proof {
 
     let recording: Recording;
     switch (mode) {
-      case "browser":
-        recording = await captureVisual(options, runDir, filePrefix, {
+      case "browser": {
+        if (!options.testFile) {
+          throw new Error("browser mode requires testFile");
+        }
+        recording = await captureVisual(options as CaptureOptions & { testFile: string }, runDir, filePrefix, {
           viewport: this.config.browser?.viewport,
         });
         break;
-      case "terminal":
+      }
+      case "terminal": {
+        if (!options.command) {
+          throw new Error("terminal mode requires command");
+        }
         recording = await captureTerminal(
           options,
           runDir,
           filePrefix,
-          `bun test ${options.testFile}`,
+          options.command,
           this.config.terminal ?? {},
         );
         break;
+      }
     }
 
+    const source = options.testFile ? basename(options.testFile) : options.command ?? mode;
     const fallbackDescriptions: Record<Exclude<RecordingMode, "auto">, string> = {
-      browser: `Playwright browser test recording of ${basename(options.testFile)}${options.testName ? ` — test: "${options.testName}"` : ""}`,
-      terminal: `Terminal capture of ${basename(options.testFile)}${options.testName ? ` — test: "${options.testName}"` : ""}`,
+      browser: `Playwright browser test recording of ${source}${options.testName ? ` — test: "${options.testName}"` : ""}`,
+      terminal: `Terminal capture: ${source}`,
     };
 
     const entry: ProofEntry = {
       timestamp: new Date().toISOString(),
       mode,
       label,
+      command: options.command,
       testFile: options.testFile,
       testName: options.testName,
       duration: recording.duration,
@@ -164,7 +174,12 @@ export class Proof {
       lines.push(`| | |`);
       lines.push(`|---|---|`);
       lines.push(`| **Mode** | ${entry.mode} |`);
-      lines.push(`| **Test** | \`${basename(entry.testFile)}\` |`);
+      if (entry.testFile) {
+        lines.push(`| **Test** | \`${basename(entry.testFile)}\` |`);
+      }
+      if (entry.command) {
+        lines.push(`| **Command** | \`${entry.command}\` |`);
+      }
       if (entry.testName) {
         lines.push(`| **Test name** | ${entry.testName} |`);
       }
