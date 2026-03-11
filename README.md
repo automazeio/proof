@@ -1,12 +1,14 @@
 # @varops/proof
 
-Visual proof of work for automated code changes.
+Capture evidence that your code works. Browser videos and animated terminal replays from test execution, organized into timestamped runs with manifests and reports.
 
-A TypeScript SDK that captures evidence of test execution -- browser video recordings and animated terminal replays. You tell it what to record, it records it. No opinions on workflow.
+You tell it what to record. It records it. No opinions on workflow.
 
 ## Install
 
 ```bash
+npm install @varops/proof
+# or
 bun add @varops/proof
 ```
 
@@ -21,7 +23,6 @@ const proof = new Proof({
   run: "deploy-v2",
 });
 
-// Record a Playwright browser test
 await proof.capture({
   testFile: "tests/checkout.spec.ts",
   mode: "browser",
@@ -29,7 +30,6 @@ await proof.capture({
   description: "User completes checkout and sees confirmation",
 });
 
-// Record a terminal test
 await proof.capture({
   testFile: "tests/api.test.ts",
   mode: "terminal",
@@ -37,51 +37,47 @@ await proof.capture({
   description: "API returns correct order details",
 });
 
-// Generate a markdown report
-await proof.report();
+const reportPath = await proof.report();
+// -> evidence/my-app/20260311/deploy-v2/report.md
 ```
 
-## Recording Modes
+## Modes
 
-### Browser
+### `browser`
 
-Runs `npx playwright test` with video recording enabled. Collects the `.webm` video and copies it to the run directory. Requires `video: 'on'` in your `playwright.config.ts`.
+Runs `npx playwright test` with video recording. Collects the `.webm` and copies it to the run directory.
 
-The SDK exports a cursor highlight script that adds a visible red dot cursor and click ripple effect to recordings:
+Requires `video: 'on'` in your `playwright.config.ts`.
+
+**Cursor highlights** -- the SDK exports a script that adds a visible cursor dot and click ripple to recordings:
 
 ```typescript
 import { getCursorHighlightScript } from "@varops/proof";
 
-// In your Playwright test:
 test("checkout", async ({ page }) => {
   await page.addInitScript(getCursorHighlightScript());
   await page.goto("http://localhost:3000");
-  // ... your test
+  // ...
 });
 ```
 
-### Terminal
+### `terminal`
 
-Spawns the test command, captures stdout/stderr with real timestamps, and produces:
+Spawns the test command, captures stdout/stderr with real timestamps. Produces two files:
 
-- A `.cast` file (asciicast v2 format, compatible with asciinema players)
-- A self-contained `.html` file with an embedded player
+- **`.cast`** -- asciicast v2 format, compatible with any asciinema player
+- **`.html`** -- self-contained player (zero external dependencies, works offline)
 
-The HTML player features:
-- Play/pause/replay controls
-- Speed dropdown (0.1x to 4x)
-- Seekable progress bar
-- ANSI color rendering
-- Auto-calculated initial speed for readable playback
+The HTML player includes play/pause, a speed dropdown (0.1x to 4x), a seekable progress bar, and ANSI color rendering. Initial playback speed is auto-calculated based on recording duration so fast output is still readable.
 
-### Auto-Detection
+### Auto-detection
 
-When `mode` is omitted or set to `"auto"`, the SDK detects the right mode:
+When `mode` is `"auto"` (the default), the SDK picks the right mode:
 
 | Signal | Mode |
 |--------|------|
-| `playwright.config.*` exists | `browser` |
-| `@playwright/test` or `playwright` in deps | `browser` |
+| `playwright.config.*` in project | `browser` |
+| `@playwright/test` or `playwright` in package.json | `browser` |
 | Everything else | `terminal` |
 
 ## API
@@ -89,73 +85,71 @@ When `mode` is omitted or set to `"auto"`, the SDK detects the right mode:
 ### `new Proof(config)`
 
 ```typescript
-interface ProofConfig {
-  appName: string;           // Used in directory path and manifest
-  proofDir?: string;         // Base directory (default: os.tmpdir()/proof)
-  run?: string;              // Run name (default: HHMM of init time)
-  browser?: {
-    viewport?: { width: number; height: number };
-  };
-  terminal?: {
-    cols?: number;           // Default: 120
-    rows?: number;           // Default: 30
-  };
-  maxVideoLength?: number;   // Kill browser recording after N seconds (default: 30)
-  retention?: {
-    maxAge?: number;         // Max age in ms for cleanup
-    maxRuns?: number;        // Max runs to keep
-  };
-}
+const proof = new Proof({
+  appName: "my-app",         // Required. Used in directory path and manifest.
+  proofDir: "./evidence",    // Base directory. Default: os.tmpdir()/proof
+  run: "deploy-v2",          // Run name. Default: HHMM of init time.
+  browser: {
+    viewport: { width: 1280, height: 720 },
+  },
+  terminal: {
+    cols: 120,               // Default: 120
+    rows: 30,                // Default: 30
+  },
+  maxVideoLength: 30,        // Kill browser recording after N seconds. Default: 30
+  retention: {
+    maxAge: 604800000,       // For cleanup: max age in ms
+    maxRuns: 20,             // For cleanup: max runs to keep
+  },
+});
 ```
 
-### `proof.capture(options): Promise<Recording>`
+### `proof.capture(options)`
 
 ```typescript
-interface CaptureOptions {
-  testFile: string;          // Path to the test file
-  testName?: string;         // Specific test name (passed as -g to Playwright)
-  label?: string;            // Filename prefix (default: mode name)
-  mode?: RecordingMode;      // "browser" | "terminal" | "auto"
-  description?: string;      // Human-readable description for the manifest
-}
+const recording = await proof.capture({
+  testFile: "tests/orders.spec.ts",  // Path to the test file
+  testName: "should complete order", // Optional: specific test (passed as -g to Playwright)
+  label: "order-flow",               // Optional: filename prefix (default: mode name)
+  mode: "browser",                   // Optional: "browser" | "terminal" | "auto"
+  description: "Order completion",   // Optional: human-readable, stored in manifest
+});
 
-interface Recording {
-  path: string;              // Absolute path to the artifact
-  mode: "browser" | "terminal";
-  duration: number;          // Duration in ms
-  label?: string;
-}
+// recording.path     -> absolute path to the artifact
+// recording.mode     -> "browser" | "terminal"
+// recording.duration -> duration in ms
+// recording.label    -> the label used
 ```
 
-### `proof.report(): Promise<string>`
+### `proof.report()`
 
-Generates a markdown report from the run's `proof.json` manifest. Returns the path to `report.md`.
+Generates a markdown report from the run's `proof.json`. Returns the path to `report.md`.
 
-### `proof.listRuns(): Promise<RunInfo[]>`
+### `proof.listRuns()`
 
-Lists all runs for the configured `appName`, sorted by most recent.
+Returns all runs for the configured `appName`, sorted most recent first.
 
-### `proof.cleanup(options?): Promise<void>`
+### `proof.cleanup(options?)`
 
-Removes old runs based on `maxAge` and/or `maxRuns`.
+Removes old runs by `maxAge` and/or `maxRuns`. Falls back to the `retention` config if no options are passed.
 
-## Evidence Directory Structure
+## Output Structure
 
 ```
-proofDir/
-  appName/
-    20260311/                  # date (yyyymmdd)
-      deploy-v2/               # run name
-        checkout-flow-143012.webm
-        api-tests-143012.cast
-        api-tests-143012.html
-        proof.json             # manifest with all entries
-        report.md              # generated report
+evidence/
+  my-app/
+    20260311/                       # date
+      deploy-v2/                    # run
+        checkout-flow-143012.webm   # browser recording
+        api-tests-143015.cast       # terminal recording (asciicast)
+        api-tests-143015.html       # terminal player (self-contained)
+        proof.json                  # manifest
+        report.md                   # generated report
 ```
 
-## Manifest Format
+## Manifest
 
-Each run produces a `proof.json`:
+Each run has a `proof.json`:
 
 ```json
 {
@@ -186,6 +180,10 @@ Each run produces a `proof.json`:
 
 ## Requirements
 
-- **Browser mode:** `@playwright/test` installed, `video: 'on'` in Playwright config
-- **Terminal mode:** No external dependencies
-- **Video duration detection:** `ffprobe` (from ffmpeg) on PATH
+- **Browser mode**: `@playwright/test` installed, `video: 'on'` in Playwright config
+- **Terminal mode**: No external dependencies
+- **Video duration**: `ffprobe` (from ffmpeg) on PATH
+
+## License
+
+MIT
