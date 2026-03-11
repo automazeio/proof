@@ -1,341 +1,191 @@
 # @varops/proof
 
-> Visual proof of work for automated code changes.
+Visual proof of work for automated code changes.
 
-**Domain:** getproof.sh
+A TypeScript SDK that captures evidence of test execution -- browser video recordings and animated terminal replays. You tell it what to record, it records it. No opinions on workflow.
 
-A shared QA recording module that captures video evidence of bug fixes and feature implementations. Used by LadyBug and TenX to attach before/after recordings to PRs and issues — so reviewers see what changed, not just the diff.
+## Install
 
----
+```bash
+bun add @varops/proof
+```
 
-## Problem
+## Quick Start
 
-When an AI agent fixes a bug or implements a feature, the PR shows code changes. But code changes don't answer: "does this actually work?" A reviewer has to check out the branch, run the app, and manually verify. That's the bottleneck.
+```typescript
+import { Proof } from "@varops/proof";
 
-A 10-second video of the fix working is worth more than a 200-line diff.
+const proof = new Proof({
+  appName: "my-app",
+  proofDir: "./evidence",
+  run: "deploy-v2",
+});
 
----
+// Record a Playwright browser test
+await proof.capture({
+  testFile: "tests/checkout.spec.ts",
+  mode: "browser",
+  label: "checkout-flow",
+  description: "User completes checkout and sees confirmation",
+});
 
-## Solution
+// Record a terminal test
+await proof.capture({
+  testFile: "tests/api.test.ts",
+  mode: "terminal",
+  label: "api-tests",
+  description: "API returns correct order details",
+});
 
-A single TypeScript package that:
-
-1. Runs tests with video recording enabled
-2. Captures before/after recordings for bug fixes
-3. Uploads recordings to GitHub PRs and issues
-4. Auto-detects the right recording mode (browser, terminal, test output)
-
----
+// Generate a markdown report
+await proof.report();
+```
 
 ## Recording Modes
 
-### 1. Visual (Playwright)
+### Browser
 
-For web apps and anything with a browser UI. Runs Playwright tests with `video: 'on'` and captures `.webm` files.
+Runs `npx playwright test` with video recording enabled. Collects the `.webm` video and copies it to the run directory. Requires `video: 'on'` in your `playwright.config.ts`.
 
+The SDK exports a cursor highlight script that adds a visible red dot cursor and click ripple effect to recordings:
+
+```typescript
+import { getCursorHighlightScript } from "@varops/proof";
+
+// In your Playwright test:
+test("checkout", async ({ page }) => {
+  await page.addInitScript(getCursorHighlightScript());
+  await page.goto("http://localhost:3000");
+  // ... your test
+});
 ```
-Before: User clicks "Pay" → 500 error page
-After:  User clicks "Pay" → Order confirmation
-```
 
-### 2. Terminal (asciinema)
+### Terminal
 
-For CLIs, APIs, and backend services. Captures terminal sessions as `.cast` files, convertible to `.gif` for embedding.
+Spawns the test command, captures stdout/stderr with real timestamps, and produces:
 
-```
-Before: $ curl /api/orders/123 → 500 Internal Server Error
-After:  $ curl /api/orders/123 → {"id": 123, "status": "paid"}
-```
+- A `.cast` file (asciicast v2 format, compatible with asciinema players)
+- A self-contained `.html` file with an embedded player
 
-### 3. Test Output (fallback)
-
-For anything without visual or terminal tests. Captures formatted test output with pass/fail status and timing.
-
-```
-Before: ✗ test_get_order — TypeError: NoneType not subscriptable (0.3s)
-After:  ✓ test_get_order — 200 OK (0.2s)
-```
+The HTML player features:
+- Play/pause/replay controls
+- Speed dropdown (0.1x to 4x)
+- Seekable progress bar
+- ANSI color rendering
+- Auto-calculated initial speed for readable playback
 
 ### Auto-Detection
 
-The recorder auto-detects which mode to use based on the project:
+When `mode` is omitted or set to `"auto"`, the SDK detects the right mode:
 
 | Signal | Mode |
 |--------|------|
-| `playwright.config.*` exists | Visual |
-| Test file imports `@playwright/test` | Visual |
-| Test command includes `playwright` | Visual |
-| `.asciinema` config or terminal test patterns | Terminal |
-| Everything else | Test output |
-
-Projects can override auto-detection via config.
-
----
+| `playwright.config.*` exists | `browser` |
+| `@playwright/test` or `playwright` in deps | `browser` |
+| Everything else | `terminal` |
 
 ## API
 
-```typescript
-import { Proof } from '@varops/proof';
-
-const proof = new Proof({
-  repo: 'your-org/your-repo',
-  githubToken: process.env.GITHUB_TOKEN,
-  mode: 'auto',    // 'visual' | 'terminal' | 'test-output' | 'auto'
-  workDir: '/tmp/proof', // optional: base directory for all recordings (default: os.tmpdir()/proof)
-});
-```
-
-### Capture a single recording
+### `new Proof(config)`
 
 ```typescript
-const video = await proof.capture({
-  testFile: 'tests/orders.spec.ts',
-  testName: 'should return order details', // optional: specific test
-  label: 'bug-repro',                      // optional: label for the recording
-});
-// Returns: { path: '/tmp/proof/bug-repro.webm', mode: 'visual', duration: 4200 }
+interface ProofConfig {
+  appName: string;           // Used in directory path and manifest
+  proofDir?: string;         // Base directory (default: os.tmpdir()/proof)
+  run?: string;              // Run name (default: HHMM of init time)
+  browser?: {
+    viewport?: { width: number; height: number };
+  };
+  terminal?: {
+    cols?: number;           // Default: 120
+    rows?: number;           // Default: 30
+  };
+  maxVideoLength?: number;   // Kill browser recording after N seconds (default: 30)
+  retention?: {
+    maxAge?: number;         // Max age in ms for cleanup
+    maxRuns?: number;        // Max runs to keep
+  };
+}
 ```
 
-### Before/after comparison
+### `proof.capture(options): Promise<Recording>`
 
 ```typescript
-const result = await proof.compare({
-  testFile: 'tests/orders.spec.ts',
-  beforeRef: 'main',         // git ref for the "before" state
-  afterRef: 'HEAD',          // git ref for the "after" state (default: HEAD)
-});
-// Returns: { before: Recording, after: Recording, mode: 'visual' }
+interface CaptureOptions {
+  testFile: string;          // Path to the test file
+  testName?: string;         // Specific test name (passed as -g to Playwright)
+  label?: string;            // Filename prefix (default: mode name)
+  mode?: RecordingMode;      // "browser" | "terminal" | "auto"
+  description?: string;      // Human-readable description for the manifest
+}
+
+interface Recording {
+  path: string;              // Absolute path to the artifact
+  mode: "browser" | "terminal";
+  duration: number;          // Duration in ms
+  label?: string;
+}
 ```
 
-### Attach to a GitHub PR
+### `proof.report(): Promise<string>`
 
-```typescript
-await proof.attachToPR({
-  prNumber: 142,
-  recordings: result,         // single Recording or compare result
-  comment: 'QA verification', // optional header text
-});
-```
+Generates a markdown report from the run's `proof.json` manifest. Returns the path to `report.md`.
 
-Produces a PR comment like:
+### `proof.listRuns(): Promise<RunInfo[]>`
 
-```markdown
-## QA Verification
+Lists all runs for the configured `appName`, sorted by most recent.
 
-### Before (main)
-https://github.com/your-org/your-repo/assets/video-before.webm
+### `proof.cleanup(options?): Promise<void>`
 
-### After (ladybug/fix-a3f2)
-https://github.com/your-org/your-repo/assets/video-after.webm
+Removes old runs based on `maxAge` and/or `maxRuns`.
 
-*Recorded by @varops/proof*
-```
-
-### Attach to a GitHub issue
-
-```typescript
-await proof.attachToIssue({
-  issueNumber: 141,
-  recording: video,
-  comment: 'Bug reproduction',
-});
-```
-
-### Run a test suite with recording
-
-```typescript
-const results = await proof.recordSuite({
-  command: 'npx playwright test',       // or 'pytest', 'bun test', etc.
-  captureVideo: true,
-  captureOutput: true,
-});
-// Returns: { videos: Recording[], output: string, passed: boolean }
-```
-
-### Artifact storage and cleanup
-
-Every `capture()` or `compare()` call writes recordings under `workDir/<run-id>/`. The run ID is a timestamp-based identifier so parallel runs don't collide.
-
-```typescript
-// List all stored runs
-const runs = await proof.listRuns();
-// [{ id: '20250310-143012', createdAt: Date, files: ['before.webm', 'after.webm'], sizeBytes: 4_200_000 }]
-
-// Clean up old recordings
-await proof.cleanup({
-  maxAge: 7 * 24 * 60 * 60 * 1000, // delete runs older than 7 days
-  maxRuns: 20,                       // keep at most 20 recent runs
-});
-```
-
-Directory layout:
+## Evidence Directory Structure
 
 ```
-<workDir>/
-├── 20250310-143012/
-│   ├── before.webm
-│   └── after.webm
-├── 20250310-151500/
-│   └── bug-repro.webm
-└── ...
+proofDir/
+  appName/
+    20260311/                  # date (yyyymmdd)
+      deploy-v2/               # run name
+        checkout-flow-143012.webm
+        api-tests-143012.cast
+        api-tests-143012.html
+        proof.json             # manifest with all entries
+        report.md              # generated report
 ```
 
----
+## Manifest Format
 
-## How It Works
+Each run produces a `proof.json`:
 
-### Visual Recording Flow
-
-```
-1. Checkout beforeRef (if doing comparison)
-2. Start Playwright with video: 'on', viewport configured
-3. Run specified test(s)
-4. Collect .webm from test-results/
-5. Checkout afterRef
-6. Repeat steps 2-4
-7. Upload both videos to GitHub
-8. Post PR/issue comment with embedded videos
-```
-
-### Terminal Recording Flow
-
-```
-1. Start asciinema recording
-2. Run test command
-3. Stop recording → .cast file
-4. Convert to .gif via agg (asciinema gif generator)
-5. Upload and attach
+```json
+{
+  "version": 1,
+  "appName": "my-app",
+  "run": "deploy-v2",
+  "createdAt": "2026-03-11T14:30:12.000Z",
+  "entries": [
+    {
+      "timestamp": "2026-03-11T14:30:15.000Z",
+      "mode": "browser",
+      "label": "checkout-flow",
+      "testFile": "tests/checkout.spec.ts",
+      "duration": 2520,
+      "artifact": "checkout-flow-143012.webm",
+      "description": "User completes checkout and sees confirmation"
+    }
+  ]
+}
 ```
 
-### GitHub Upload
-
-Videos are uploaded as GitHub release assets or via the GitHub API's asset upload endpoint, then referenced in PR/issue comments via markdown. For repos without releases, falls back to comment-embedded links.
-
----
-
-## Configuration
-
-### Package config (`proof.config.ts` or in `package.json`)
-
-```typescript
-export default {
-  mode: 'auto',
-  visual: {
-    viewport: { width: 1280, height: 720 },
-    videosOnFailureOnly: false,
-  },
-  terminal: {
-    cols: 120,
-    rows: 30,
-    convertToGif: true,
-  },
-  github: {
-    uploadMethod: 'assets', // 'assets' | 'comment-link'
-  },
-  maxVideoLength: 30, // seconds — kill recording after this
-  workDir: '/tmp/proof', // base directory for recordings (default: os.tmpdir()/proof)
-  retention: {
-    maxAge: 604800000, // 7 days in ms — auto-cleanup threshold
-    maxRuns: 20,       // keep at most N recent runs
-  },
-};
-```
-
-### Environment Variables
+## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `GITHUB_TOKEN` | Required for uploading to GitHub |
-| `PROOF_MODE` | Override auto-detection |
-| `PROOF_MAX_LENGTH` | Max video duration in seconds |
-| `PROOF_WORK_DIR` | Override default work directory for recordings |
+| `PROOF_DIR` | Override default proof directory |
+| `PROOF_MODE` | Override auto-detection (`browser` or `terminal`) |
 
----
+## Requirements
 
-## Integration Points
-
-### LadyBug
-
-**`github` mode:** Record bug reproduction + fix verification, attach both to the PR.
-
-```
-Error → Investigate → Record bug (before) → Fix → Record fix (after) → PR with videos
-```
-
-**`tenx` mode:** Record bug reproduction only, attach to the GitHub issue. TenX gets the video as context.
-
-```
-Error → Investigate → Record bug → Issue with video → TenX picks up
-```
-
-### TenX
-
-**Verifier Agent:** After execution, run the relevant tests with recording. Attach to the PR as proof of work.
-
-```
-Task done → Verifier runs tests with proof → Videos attached to PR
-```
-
-**Before/after for bug fixes:** When a task is a bug fix, record the failing test before the fix and the passing test after.
-
-**Feature demos:** For UI features, record a walkthrough of the new behavior.
-
----
-
-## Package Structure
-
-```
-@varops/proof/
-├── src/
-│   ├── index.ts          — Public API (Proof class)
-│   ├── capture.ts        — Run tests with recording enabled
-│   ├── compare.ts        — Before/after git-ref-based comparison
-│   ├── attach.ts         — Upload to GitHub PRs/issues
-│   ├── detect.ts         — Auto-detect recording mode
-│   ├── modes/
-│   │   ├── visual.ts     — Playwright video capture
-│   │   ├── terminal.ts   — asciinema terminal capture
-│   │   └── output.ts     — Test output capture (fallback)
-│   └── types.ts          — Shared types and interfaces
-├── package.json
-├── tsconfig.json
-└── PRD.md
-```
-
----
-
-## Tech Stack
-
-- **Runtime:** Bun
-- **Language:** TypeScript
-- **Visual recording:** Playwright (peer dependency — projects bring their own)
-- **Terminal recording:** asciinema + agg (bundled or peer dependency)
-- **GitHub:** Octokit (@octokit/rest)
-- **Distribution:** npm package (`@varops/proof`)
-
----
-
-## Non-Goals
-
-- Not a test runner — it wraps existing test commands with recording
-- Not a CI system — it produces artifacts, doesn't decide pass/fail
-- Not a video editor — raw recordings, no post-processing beyond gif conversion
-- Not a screenshot tool — video captures behavior, not static state
-
----
-
-## Roadmap
-
-- [ ] Core: Visual recording via Playwright
-- [ ] Core: Terminal recording via asciinema
-- [ ] Core: Test output capture (fallback mode)
-- [ ] Core: Auto-detection of recording mode
-- [ ] Core: GitHub PR/issue attachment
-- [ ] Core: Before/after comparison with git refs
-- [ ] Integration: LadyBug (`github` + `tenx` modes)
-- [ ] Integration: TenX (Verifier Agent)
-- [ ] Future: Annotated recordings (highlight the fix area)
-- [ ] Future: Video thumbnail generation for PR comments
-- [ ] Future: Slack/notification embedding
-- [ ] Future: Recording diffing (visual comparison of before/after frames)
-- [ ] Future: CLI wrapper for cross-language usage (any language shells out to `npx @varops/proof`)
+- **Browser mode:** `@playwright/test` installed, `video: 'on'` in Playwright config
+- **Terminal mode:** No external dependencies
+- **Video duration detection:** `ffprobe` (from ffmpeg) on PATH
