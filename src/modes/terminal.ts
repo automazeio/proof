@@ -22,7 +22,7 @@ export async function captureTerminal(
 
   await new Promise<void>((resolve, reject) => {
     const proc = spawn("script", args, {
-      stdio: "pipe",
+      stdio: "inherit",
       env: {
         ...process.env,
         COLUMNS: String(config.cols ?? 120),

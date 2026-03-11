@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Proof Test App</title>
+  <style>
+    body { font-family: system-ui; max-width: 600px; margin: 40px auto; padding: 0 20px; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    #result { margin-top: 20px; padding: 15px; border-radius: 6px; display: none; }
+    .success { background: #d4edda; color: #155724; display: block !important; }
+    .error { background: #f8d7da; color: #721c24; display: block !important; }
+  </style>
+</head>
+<body>
+  <h1>Order System</h1>
+  <p>Click the button to process an order.</p>
+  <button id="pay-btn">Pay Now</button>
+  <div id="result"></div>
+  <script>
+    document.getElementById('pay-btn').addEventListener('click', () => {
+      const result = document.getElementById('result');
+      result.className = 'success';
+      result.textContent = 'Order #12345 confirmed. Thank you!';
+    });
+  </script>
+</body>
+</html>
