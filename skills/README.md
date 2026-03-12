@@ -1,13 +1,12 @@
 # Agent Skills
 
-Agent Skills for the MUXI platform, following the open [Agent Skills](https://agentskills.io) specification.
+Agent Skills for `@automaze/proof`, following the open [Agent Skills](https://agentskills.io) specification.
 
 ## Available Skills
 
 | Skill | Description |
 |-------|-------------|
 | [`proof`](proof/) | Capture visual evidence of test execution -- terminal replays, browser videos, and structured reports |
-| [`muxi`](muxi/) | Complete MUXI platform guide -- installation, server setup, CLI, secrets, formations, deployment, SDKs, and APIs |
 
 ## What Are Agent Skills?
 
@@ -23,14 +22,13 @@ Skills use a progressive disclosure model:
 ### Claude Code
 
 ```bash
-# From the root of this repo
-claude mcp add-skill skills/muxi
+claude mcp add-skill skills/proof
 ```
 
 Or add to your `.claude/settings.json`:
 ```json
 {
-  "skills": ["skills/muxi"]
+  "skills": ["skills/proof"]
 }
 ```
 
@@ -38,14 +36,14 @@ Or add to your `.claude/settings.json`:
 
 Add to `.cursor/skills/` by copying or symlinking:
 ```bash
-ln -s $(pwd)/skills/muxi .cursor/skills/muxi
+ln -s $(pwd)/skills/proof .cursor/skills/proof
 ```
 
 ### Generic (any compatible agent)
 
-Point your agent's skill discovery directory at `skills/muxi/`. The agent will parse the `SKILL.md` frontmatter at startup and activate the full skill when MUXI-related tasks come up.
+Point your agent's skill discovery directory at `skills/proof/`. The agent will parse the `SKILL.md` frontmatter at startup and activate the full skill when proof-related tasks come up.
 
-For filesystem-based agents, the skill is activated when the agent reads `skills/muxi/SKILL.md`. Reference files in `skills/muxi/references/` are loaded on demand.
+For filesystem-based agents, the skill is activated when the agent reads `skills/proof/SKILL.md`. Reference files in `skills/proof/references/` are loaded on demand.
 
 ### Manual / Custom Integration
 
@@ -54,9 +52,9 @@ Parse the YAML frontmatter from `SKILL.md` and inject into your agent's system p
 ```xml
 <available_skills>
   <skill>
-    <name>muxi</name>
-    <description>Guide users through the MUXI platform -- infrastructure for AI agents. Covers installation, server setup, CLI, secrets, formations, deployment, SDKs, and APIs.</description>
-    <location>/path/to/skills/muxi/SKILL.md</location>
+    <name>proof</name>
+    <description>Capture visual evidence of test execution using @automaze/proof. Records terminal output and browser interactions as shareable artifacts.</description>
+    <location>/path/to/skills/proof/SKILL.md</location>
   </skill>
 </available_skills>
 ```
@@ -64,15 +62,11 @@ Parse the YAML frontmatter from `SKILL.md` and inject into your agent's system p
 When the skill is activated, load the full `SKILL.md` body. For detailed reference, the agent can read files from `references/`:
 
 ```
-skills/muxi/
-├── SKILL.md                           # Main instructions (448 lines)
+skills/proof/
+├── SKILL.md                    # Main instructions (~243 lines)
 └── references/
-    ├── formation-schema.md            # Complete .afs schema reference
-    ├── cli-reference.md               # All CLI commands and flags
-    ├── server-config.md               # Server config, API, services
-    ├── formation-api.md               # Runtime API endpoints
-    ├── sdks.md                        # Go, Python, TypeScript SDK reference
-    └── examples.md                    # Full formation examples + SDK usage
+    ├── typescript.md           # Full TypeScript SDK guide
+    └── cli.md                  # Full CLI guide
 ```
 
 ## Validation
@@ -80,11 +74,10 @@ skills/muxi/
 Validate the skill using the [skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref) CLI:
 
 ```bash
-skills-ref validate skills/muxi
+skills-ref validate skills/proof
 ```
 
 ## Learn More
 
 - [Agent Skills Specification](https://agentskills.io/specification) -- the full format spec
 - [Agent Skills GitHub](https://github.com/agentskills/agentskills) -- reference implementation
-- [MUXI Documentation](https://muxi.org/docs) -- full platform docs
