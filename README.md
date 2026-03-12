@@ -15,7 +15,7 @@
 
 `proof` captures terminal output and browser interactions as shareable evidence -- animated HTML replays, videos, and structured reports. Run your tests through proof, get artifacts you can attach to PRs, send to stakeholders, or keep as a record.
 
-![Proof](screenshot.webp)
+![Proof](https://raw.githubusercontent.com/automazeio/proof/main/screenshot.webp)
 
 ## Get started
 
