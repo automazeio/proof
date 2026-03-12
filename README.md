@@ -20,6 +20,10 @@
 ## Get started
 
 ```bash
+# Global install (recommended for CLI usage)
+npm install -g @automaze/proof
+
+# Or as a project dependency
 npm install @automaze/proof
 ```
 
