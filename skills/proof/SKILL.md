@@ -1,20 +1,18 @@
 ---
 name: proof
 description: >
-  Capture visual evidence of test execution using @automaze/proof.
-  Records terminal output and browser interactions as shareable artifacts.
-  Use when the user wants to record test runs, generate proof reports,
-  capture terminal output, or create visual evidence of code execution.
-triggers:
-  - proof
-  - capture evidence
-  - record test
-  - record terminal
-  - terminal recording
-  - browser recording
-  - proof report
-  - visual evidence
-  - test evidence
+  Use @automaze/proof to capture test runs as shareable, replayable evidence artifacts.
+  Invoke this skill whenever the user wants to preserve or share proof that tests passed —
+  not just run tests, but document and share the results. Key use cases: attaching terminal
+  output to a PR so reviewers can replay the test session instead of trusting a screenshot;
+  generating a markdown proof report to embed in PR descriptions or tickets; recording a
+  browser test run as a self-contained HTML video to share with a PM or QA team; or creating
+  an audit trail that ties passing tests to a specific git commit. Trigger on phrases like
+  "attach evidence to PR", "save test output as artifact", "replayable test recording",
+  "proof report", "record my test run", "share test results", "visual proof tests pass",
+  "terminal recording of tests", or whenever someone wants reviewers or stakeholders to
+  see test execution without re-running it themselves. Also trigger when the user mentions
+  @automaze/proof directly.
 ---
 
 # @automaze/proof

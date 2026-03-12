@@ -9,7 +9,7 @@ Agent Skills for `@automaze/proof`, following the open [Agent Skills](https://ag
 | [`proof`](proof/) | Capture visual evidence of test execution -- terminal replays, browser videos, and structured reports |
 
 > [!TIP]
-> **Quick start for any AI agent:** Point your agent to `https://github.com/automazeio/proof/tree/main/skills/proof/SKILL.md` and tell it to install and use the skill.
+> **Quick start for any AI agent:** Point your agent to this url and tell it to install and use the proof skill.
 
 ## What Are Agent Skills?
 
