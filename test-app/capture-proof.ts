@@ -4,7 +4,7 @@ import { join } from "path";
 const EVIDENCE_DIR = join(import.meta.dir, "evidence");
 
 async function main() {
-  console.log("=== @varops/proof — Test Evidence ===\n");
+  console.log("=== @automaze/proof — Test Evidence ===\n");
 
   const proof = new Proof({
     appName: "proof-test",

@@ -1,11 +1,11 @@
-# npm Publish Checklist for @varops/proof
+# npm Publish Checklist for @automaze/proof
 
 ## 1. Create the npm Organization
 
-The package is scoped as `@varops/proof`, so you need an npm org called `varops`.
+The package is scoped as `@automaze/proof`, so you need an npm org called `automaze`.
 
 1. Go to https://www.npmjs.com/org/create
-2. Create org named **varops**
+2. Create org named **automaze**
 3. Choose **free** (unlimited public packages) or **paid** (if you want private packages)
 
 If you already have the org, skip this.
@@ -20,12 +20,12 @@ Verify you're logged in and part of the org:
 
 ```bash
 npm whoami
-npm org ls varops
+npm org ls automaze
 ```
 
 ## 3. Package Access
 
-Scoped packages (`@varops/*`) are **private by default** on npm. To publish as public:
+Scoped packages (`@automaze/*`) are **private by default** on npm. To publish as public:
 
 ```bash
 npm publish --access public
@@ -55,10 +55,10 @@ That's it. The `package.json` already has `"files": ["dist"]` so only the built 
 After publishing:
 
 ```bash
-npm info @varops/proof
+npm info @automaze/proof
 ```
 
-Check https://www.npmjs.com/package/@varops/proof -- the README will render as the package page.
+Check https://www.npmjs.com/package/@automaze/proof -- the README will render as the package page.
 
 ## What's Already Configured
 
@@ -66,7 +66,7 @@ These are set and don't need changes:
 
 | Field | Value | Status |
 |-------|-------|--------|
-| `name` | `@varops/proof` | OK |
+| `name` | `@automaze/proof` | OK |
 | `version` | `0.0.1` | OK for first publish |
 | `main` | `dist/index.js` | OK |
 | `types` | `dist/index.d.ts` | OK |
@@ -83,12 +83,12 @@ These aren't blocking but are nice for the npm page:
 {
   "repository": {
     "type": "git",
-    "url": "https://github.com/varopsco/proof.git"
+    "url": "https://github.com/automazeio/proof.git"
   },
-  "homepage": "https://github.com/varopsco/proof",
-  "bugs": "https://github.com/varopsco/proof/issues",
+  "homepage": "https://github.com/automazeio/proof",
+  "bugs": "https://github.com/automazeio/proof/issues",
   "keywords": ["proof", "evidence", "testing", "playwright", "terminal", "recording", "asciicast"],
-  "author": "varops"
+  "author": "automaze"
 }
 ```
 

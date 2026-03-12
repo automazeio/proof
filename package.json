@@ -1,5 +1,5 @@
 {
-  "name": "@varops/proof",
+  "name": "@automaze/proof",
   "version": "0.20260311.0",
   "description": "Visual proof of work for automated code changes",
   "type": "module",

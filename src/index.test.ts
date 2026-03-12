@@ -229,7 +229,7 @@ describe("Proof", () => {
       expect(report).toContain("test-run");
       expect(report).toContain("CLI test suite");
       expect(report).toContain("cli-tests");
-      expect(report).toContain("@varops/proof");
+      expect(report).toContain("@automaze/proof");
     });
 
     test("generates html report", async () => {

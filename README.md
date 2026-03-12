@@ -1,11 +1,11 @@
-# @varops/proof
+# @automaze/proof
 
 A 10-second recording of your tests passing is worth more than a 200-line diff.
 
 `proof` captures terminal output and browser interactions as shareable evidence -- animated HTML replays, videos, and structured reports. Run your tests through proof, get artifacts you can attach to PRs, send to stakeholders, or keep as a record.
 
 ```bash
-npm install @varops/proof
+npm install @automaze/proof
 ```
 
 ## What it produces
@@ -19,7 +19,7 @@ npm install @varops/proof
 ## Quick start
 
 ```typescript
-import { Proof } from "@varops/proof";
+import { Proof } from "@automaze/proof";
 
 const proof = new Proof({ appName: "my-app", proofDir: "./evidence" });
 
@@ -73,7 +73,7 @@ Requires `video: 'on'` in your `playwright.config.ts`.
 **Cursor highlights** -- optional. Adds a visible red cursor dot and click ripple to recordings:
 
 ```typescript
-import { getCursorHighlightScript } from "@varops/proof";
+import { getCursorHighlightScript } from "@automaze/proof";
 
 test("checkout", async ({ page }) => {
   await page.addInitScript(getCursorHighlightScript());

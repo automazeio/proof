@@ -184,7 +184,7 @@ function readStdin(): Promise<string> {
 }
 
 function printUsage() {
-  console.log(`@varops/proof — capture evidence of test execution
+  console.log(`@automaze/proof — capture evidence of test execution
 
 Usage:
   proof capture --app <name> --command <cmd> [options]

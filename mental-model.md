@@ -1,4 +1,4 @@
-# Mental Model: @varops/proof
+# Mental Model: @automaze/proof
 
 ## Overview
 
