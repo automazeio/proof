@@ -1,11 +1,11 @@
-# @automaze/proof docs
+# Proof docs
 
 Capture evidence that your code works. Terminal replays, browser videos, structured reports.
 
 ## Guides
 
-- **[TypeScript SDK](./typescript.md)** -- use proof as a library in Node.js, Bun, or Deno projects
-- **[CLI](./cli.md)** -- use proof from the command line, CI pipelines, or non-JS projects
+- **[TypeScript SDK](./typescript.md)** – use proof as a library in Node.js, Bun, or Deno projects
+- **[CLI](./cli.md)** – use proof from the command line, CI pipelines, or non-JS projects
 
 ## Install
 
@@ -15,7 +15,7 @@ npm install @automaze/proof
 bun add @automaze/proof
 ```
 
-The CLI is included -- after install, `proof` is available as a command.
+The CLI is included – after install, `proof` is available as a command.
 
 ## Concepts
 

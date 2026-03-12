@@ -1,4 +1,4 @@
-# TypeScript SDK
+# Proof: TypeScript SDK
 
 Use `@automaze/proof` as a library to capture terminal output and browser recordings from your TypeScript/JavaScript code.
 

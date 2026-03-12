@@ -1,4 +1,4 @@
-# CLI
+# Proof: CLI
 
 Use `proof` from the command line to capture terminal output and browser recordings without writing TypeScript. All output is JSON to stdout, making it easy to integrate with CI pipelines, shell scripts, and non-JS toolchains.
 
