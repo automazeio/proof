@@ -2,7 +2,7 @@
 
 [![Automaze](https://img.shields.io/badge/By-automaze.io-4b3baf)](https://automaze.io)
 &nbsp;
-[![Agent Skill](https://img.shields.io/badge/+-Agent%20Skill-ee9e33)](https://github.com/automazeio/proof/tree/main/skill)
+[![Agent Skill](https://img.shields.io/badge/+-Agent%20Skill-ee9e33)](https://github.com/automazeio/proof/tree/main/skills)
 [![GitHub Issues](https://img.shields.io/badge/+-GitHub%20Issues-1f2328)](https://github.com/automazeio/proof)
 &nbsp;
 [![Apache License](https://img.shields.io/badge/License-Apache%202.0-28a745)](https://github.com/automazeio/proof/blob/main/LICENSE)
@@ -193,6 +193,19 @@ evidence/my-app/20260312/deploy-v2/
 - **Terminal mode**: No external dependencies
 - **Browser mode**: `@playwright/test`, `video: 'on'` in Playwright config
 - **Video duration**: `ffprobe` on PATH
+
+## Agent Skill
+
+Proof ships with an [agent skill](./skills/proof/) that teaches AI coding agents how to use it. When installed, agents automatically use `proof capture` instead of ad-hoc approaches like `tee` or raw Playwright runs.
+
+**Benchmark** (Claude Sonnet 4.6, 3 eval scenarios, 14 assertions):
+
+| | With Skill | Without Skill |
+|---|---|---|
+| **Pass Rate** | 100% | 28% |
+| **Assertions Passed** | 14/14 | 4/14 |
+
+The skill delivers a **+72 point pass rate improvement**. [Full benchmark results](./BENCHMARK.md)
 
 ---
 
