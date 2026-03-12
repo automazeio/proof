@@ -17,6 +17,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc && bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/cli.ts --outdir ./dist --target node",
     "typecheck": "tsc --noEmit",
@@ -32,5 +35,5 @@
     "@types/bun": "^1.0.0",
     "typescript": "^5.3.0"
   },
-  "license": "MIT"
+  "license": "Apache-2.0"
 }
