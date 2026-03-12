@@ -175,6 +175,16 @@ evidence/my-app/20260312/deploy-v2/
 - **Browser mode**: `@playwright/test`, `video: 'on'` in Playwright config
 - **Video duration**: `ffprobe` on PATH
 
+---
+
+## Other tools by Automaze
+
+- [VibeProxy](https://github.com/automazeio/vibeproxy) - Native macOS menu bar app to use Claude Max & ChatGPT subscriptions with AI coding tools
+- [CCPM](https://github.com/automazeio/ccpm) - Project management system for Claude Code using GitHub Issues and Git worktrees for parallel agent execution
+- [Open Royalties](https://github.com/automazeio/open-royalties) - The missing funding framework for bootstrappers, indie hackers, and creators
+
+---
+
 ## License
 
-MIT
+Apache 2.0. See [LICENSE](./LICENSE).
