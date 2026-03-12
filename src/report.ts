@@ -208,8 +208,7 @@ async function generateHtml(
   .time { color: #8b949e; font-size: 13px; font-family: monospace; }
   .description { padding: 16px 20px 0; color: #c9d1d9; }
 
-  /* Media */
-  .media { padding: 16px 20px; }
+  .media { padding: 0; }
   .media video {
     width: 100%;
     border-radius: 6px;
@@ -217,10 +216,10 @@ async function generateHtml(
   }
   .media iframe {
     width: 100%;
-    min-height: 360px;
+    height: 540px;
     border: none;
     border-radius: 6px;
-    background: #1a1a2e;
+    background: transparent;
   }
 
   /* Meta */
@@ -306,9 +305,9 @@ async function buildMediaEmbed(
   if (entry.mode === "terminal") {
     if (inline) {
       const playerHtml = await readFile(artifactPath, "utf-8");
-      return `<iframe srcdoc="${escAttr(playerHtml)}"></iframe>`;
+      return `<iframe allowtransparency="true" srcdoc="${escAttr(playerHtml)}"></iframe>`;
     }
-    return `<iframe src="./${esc(entry.artifact)}"></iframe>`;
+    return `<iframe allowtransparency="true" src="./${esc(entry.artifact)}"></iframe>`;
   }
 
   return `<a href="./${esc(entry.artifact)}">${esc(entry.artifact)}</a>`;

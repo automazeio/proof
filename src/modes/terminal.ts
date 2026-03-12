@@ -122,12 +122,12 @@ function buildPlayerHtml(
 <title>${label} — proof terminal recording</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #1a1a2e; display: flex; justify-content: center; padding: 24px; font-family: system-ui, sans-serif; }
+  body { margin: 0; padding: 1rem; background: transparent; -webkit-font-smoothing: antialiased; font-family: system-ui, sans-serif; }
   .player {
     background: #0d1117;
-    border-radius: 8px;
+    border-radius: 6px;
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    box-shadow: 0 0 1rem rgba(0,0,0,0.5);
     max-width: ${Math.max(cols * 8.4 + 32, 500)}px;
     width: 100%;
   }
@@ -146,16 +146,15 @@ function buildPlayerHtml(
   .dot.g { background: #27c93f; }
   .title { color: #8b949e; font-size: 13px; margin-left: 8px; }
   #terminal {
+    height: 420px;
     padding: 16px;
-    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Cascadia Code', 'Courier New', monospace;
+    font-family: ui-monospace, 'SF Mono', 'Menlo', 'Monaco', 'Cascadia Code', 'Courier New', monospace;
     font-size: 13px;
     line-height: 1.5;
     color: #e6edf3;
     white-space: pre-wrap;
     word-wrap: break-word;
-    min-height: 80px;
     overflow-y: auto;
-    max-height: ${rows * 22}px;
   }
   .controls {
     padding: 10px 16px;
