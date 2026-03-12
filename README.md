@@ -177,6 +177,22 @@ evidence/my-app/20260312/deploy-v2/
 
 ---
 
+## Support This Project
+
+**Proof was developed at [Automaze](https://automaze.io) for developers who ship, by developers who ship**.
+
+If Proof helps your team ship better software:
+
+- ⭐ **[Star this repository](https://github.com/automazeio/proof)** to show your support
+- 🐦 **[Follow @aroussi on X](https://x.com/aroussi)** for updates and tips
+
+
+> [!TIP]
+> **Ship faster with Automaze.** We partner with founders to bring their vision to life, scale their business, and optimize for success.
+>
+> **[Visit Automaze to book a call with me ›](https://automaze.io)**
+
+
 ## Other tools by Automaze
 
 - [VibeProxy](https://github.com/automazeio/vibeproxy) - Native macOS menu bar app to use Claude Max & ChatGPT subscriptions with AI coding tools
