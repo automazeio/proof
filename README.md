@@ -1,107 +1,76 @@
 # @varops/proof
 
-Capture evidence that your code works. Browser videos and animated terminal replays from test execution, organized into timestamped runs with manifests and reports.
+A 10-second recording of your tests passing is worth more than a 200-line diff.
 
-You tell it what to record. It records it. No opinions on workflow.
-
-## Install
+`proof` captures terminal output and browser interactions as shareable evidence -- animated HTML replays, videos, and structured reports. Run your tests through proof, get artifacts you can attach to PRs, send to stakeholders, or keep as a record.
 
 ```bash
 npm install @varops/proof
-# or
-bun add @varops/proof
 ```
 
-## Quick Start
+## What it produces
 
-### TypeScript SDK
+**Terminal capture** -- runs any command, records output with real timing into a self-contained HTML player. No dependencies, works offline, plays anywhere.
+
+**Browser capture** -- runs Playwright tests with video recording, collects `.webm` files with optional cursor highlighting.
+
+**Report** -- a `proof.json` manifest per run, plus a generated markdown summary linking to all artifacts.
+
+## Quick start
 
 ```typescript
 import { Proof } from "@varops/proof";
 
-const proof = new Proof({
-  appName: "my-app",
-  proofDir: "./evidence",
-  run: "deploy-v2",
-});
+const proof = new Proof({ appName: "my-app", proofDir: "./evidence" });
 
-// Terminal -- capture any command
 await proof.capture({
-  command: "pytest tests/test_api.py -v",
+  command: "npm test",
   mode: "terminal",
-  label: "api-tests",
-  description: "API returns correct order details",
-});
-
-// Browser -- capture a Playwright test
-await proof.capture({
-  testFile: "tests/checkout.spec.ts",
-  mode: "browser",
-  label: "checkout-flow",
-  description: "User completes checkout and sees confirmation",
+  label: "unit-tests",
 });
 
 await proof.report();
+// -> evidence/my-app/20260312/1430/report.md
 ```
 
-### CLI
+That's it. `evidence/` now contains an animated HTML replay of your test run and a manifest describing what was captured.
 
-```bash
-# Terminal capture
-proof capture --app my-app --command "pytest tests/" --mode terminal --label api-tests
+## Terminal mode
 
-# Browser capture
-proof capture --app my-app --test-file tests/checkout.spec.ts --mode browser
+Runs any shell command. Captures stdout/stderr with real timestamps. Produces:
 
-# Generate report
-proof report --app my-app --run deploy-v2
+- **`.cast`** -- asciicast v2, compatible with asciinema players
+- **`.html`** -- self-contained player with play/pause, speed control (0.1x--4x), seek bar, and ANSI color rendering
+
+Playback speed auto-adjusts based on recording duration so fast output is still readable at first play.
+
+```typescript
+await proof.capture({
+  command: "pytest tests/ -v",
+  mode: "terminal",
+  label: "api-tests",
+  description: "API integration tests",
+});
 ```
 
-### JSON mode (for non-JS SDKs / agents)
+Works with any test runner or command: `pytest`, `go test`, `cargo test`, `bun test`, `make check` -- anything that writes to stdout.
 
-```bash
-echo '{
-  "action": "capture",
-  "appName": "my-app",
-  "proofDir": "./evidence",
-  "run": "deploy-v2",
-  "captures": [
-    { "command": "pytest tests/", "mode": "terminal", "label": "api-tests" },
-    { "command": "go test ./...", "mode": "terminal", "label": "go-tests" }
-  ]
-}' | proof --json
+## Browser mode
+
+Runs a Playwright test file with video recording enabled. Collects the `.webm` and copies it to the run directory.
+
+```typescript
+await proof.capture({
+  testFile: "tests/checkout.spec.ts",
+  mode: "browser",
+  label: "checkout",
+  description: "User completes checkout flow",
+});
 ```
 
-Output is JSON to stdout:
+Requires `video: 'on'` in your `playwright.config.ts`.
 
-```json
-{
-  "action": "capture",
-  "appName": "my-app",
-  "run": "deploy-v2",
-  "recordings": [
-    { "path": "/abs/path/api-tests-143012.html", "mode": "terminal", "duration": 1200, "label": "api-tests" },
-    { "path": "/abs/path/go-tests-143015.html", "mode": "terminal", "duration": 3400, "label": "go-tests" }
-  ]
-}
-```
-
-## Modes
-
-### `terminal`
-
-Runs any command, captures stdout/stderr with real timestamps. Produces:
-
-- **`.cast`** -- asciicast v2 format, compatible with any asciinema player
-- **`.html`** -- self-contained player (zero external dependencies, works offline)
-
-The HTML player includes play/pause, a speed dropdown (0.1x to 4x), a seekable progress bar, and ANSI color rendering. Initial playback speed is auto-calculated based on recording duration so fast output is still readable.
-
-### `browser`
-
-Runs `npx playwright test` with video recording. Collects the `.webm` and copies it to the run directory. Requires `video: 'on'` in your `playwright.config.ts`.
-
-**Cursor highlights** -- the SDK exports a script that adds a visible cursor dot and click ripple to recordings:
+**Cursor highlights** -- optional. Adds a visible red cursor dot and click ripple to recordings:
 
 ```typescript
 import { getCursorHighlightScript } from "@varops/proof";
@@ -112,31 +81,51 @@ test("checkout", async ({ page }) => {
 });
 ```
 
-### Auto-detection
+## CLI
 
-When `mode` is `"auto"` (the default), the SDK picks the right mode:
+For non-TypeScript projects or CI pipelines:
 
-| Signal | Mode |
-|--------|------|
-| `playwright.config.*` in project | `browser` |
-| `@playwright/test` or `playwright` in package.json | `browser` |
-| Everything else | `terminal` |
+```bash
+# Capture terminal output
+proof capture --app my-app --command "pytest tests/" --mode terminal --label tests
 
-## API
+# Capture a Playwright test
+proof capture --app my-app --test-file tests/checkout.spec.ts --mode browser
+
+# Generate report
+proof report --app my-app
+```
+
+For automation, pipe JSON to stdin for multi-capture runs:
+
+```bash
+echo '{
+  "action": "capture",
+  "appName": "my-app",
+  "captures": [
+    { "command": "pytest tests/", "mode": "terminal", "label": "api" },
+    { "command": "go test ./...", "mode": "terminal", "label": "go" }
+  ]
+}' | proof --json
+```
+
+All CLI output is JSON to stdout.
+
+## API reference
 
 ### `new Proof(config)`
 
 ```typescript
 const proof = new Proof({
-  appName: "my-app",         // Required. Used in directory path and manifest.
-  proofDir: "./evidence",    // Base directory. Default: os.tmpdir()/proof
-  run: "deploy-v2",          // Run name. Default: HHMM of init time.
+  appName: "my-app",       // Required. Used in directory path and manifest.
+  proofDir: "./evidence",  // Default: os.tmpdir()/proof
+  run: "deploy-v2",        // Default: HHMM of init time
   browser: {
     viewport: { width: 1280, height: 720 },
   },
   terminal: {
-    cols: 120,               // Default: 120
-    rows: 30,                // Default: 30
+    cols: 120,             // Default: 120
+    rows: 30,              // Default: 30
   },
 });
 ```
@@ -145,65 +134,35 @@ const proof = new Proof({
 
 ```typescript
 const recording = await proof.capture({
-  command: "pytest tests/",          // Shell command to run (required for terminal mode)
-  testFile: "tests/orders.spec.ts",  // Playwright test file (required for browser mode)
-  testName: "should complete order", // Optional: specific test (passed as -g to Playwright)
-  label: "order-flow",               // Optional: filename prefix (default: mode name)
-  mode: "terminal",                  // Optional: "browser" | "terminal" | "auto"
-  description: "Order completion",   // Optional: human-readable, stored in manifest
+  command: "pytest tests/",          // Required for terminal mode
+  testFile: "tests/orders.spec.ts",  // Required for browser mode
+  testName: "should complete order", // Optional: Playwright -g filter
+  label: "order-flow",               // Optional: filename prefix
+  mode: "terminal",                  // "browser" | "terminal" | "auto"
+  description: "Order flow tests",   // Optional: stored in manifest
 });
 
-// recording.path     -> absolute path to the artifact
-// recording.mode     -> "browser" | "terminal"
-// recording.duration -> duration in ms
-// recording.label    -> the label used
+recording.path      // absolute path to artifact
+recording.mode      // "browser" | "terminal"
+recording.duration  // ms
 ```
-
-**Terminal mode** requires `command`. **Browser mode** requires `testFile`.
 
 ### `proof.report()`
 
-Generates a markdown report from the run's `proof.json`. Returns the path to `report.md`.
+Generates a markdown report from `proof.json`. Returns the report file path.
 
-## Output Structure
+## Output structure
 
 ```
-evidence/
-  my-app/
-    20260311/                       # date
-      deploy-v2/                    # run
-        checkout-flow-143012.webm   # browser recording
-        api-tests-143015.cast       # terminal recording (asciicast)
-        api-tests-143015.html       # terminal player (self-contained)
-        proof.json                  # manifest
-        report.md                   # generated report
+evidence/my-app/20260312/deploy-v2/
+  unit-tests-143012.cast       # asciicast recording
+  unit-tests-143012.html       # animated HTML player
+  checkout-143015.webm         # browser video
+  proof.json                   # manifest (all entries)
+  report.md                    # generated summary
 ```
 
-## Manifest
-
-Each run has a `proof.json`:
-
-```json
-{
-  "version": 1,
-  "appName": "my-app",
-  "run": "deploy-v2",
-  "createdAt": "2026-03-11T14:30:12.000Z",
-  "entries": [
-    {
-      "timestamp": "2026-03-11T14:30:15.000Z",
-      "mode": "terminal",
-      "label": "api-tests",
-      "command": "pytest tests/test_api.py -v",
-      "duration": 1200,
-      "artifact": "api-tests-143012.html",
-      "description": "API returns correct order details"
-    }
-  ]
-}
-```
-
-## Environment Variables
+## Environment variables
 
 | Variable | Description |
 |----------|-------------|
@@ -213,8 +172,8 @@ Each run has a `proof.json`:
 ## Requirements
 
 - **Terminal mode**: No external dependencies
-- **Browser mode**: `@playwright/test` installed, `video: 'on'` in Playwright config
-- **Video duration**: `ffprobe` (from ffmpeg) on PATH
+- **Browser mode**: `@playwright/test`, `video: 'on'` in Playwright config
+- **Video duration**: `ffprobe` on PATH
 
 ## License
 
