@@ -5,3 +5,6 @@ dist/
 .env.local
 test-results/
 test-app/evidence/
+STATUS.md
+.factory
+NPM_PUBLISH.md
