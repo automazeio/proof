@@ -8,6 +8,9 @@ Agent Skills for `@automaze/proof`, following the open [Agent Skills](https://ag
 |-------|-------------|
 | [`proof`](proof/) | Capture visual evidence of test execution -- terminal replays, browser videos, and structured reports |
 
+> [!TIP]
+> **Quick start for any AI agent:** Point your agent to `https://github.com/automazeio/proof/tree/main/skills/proof/SKILL.md` and tell it to install and use the skill.
+
 ## What Are Agent Skills?
 
 Agent Skills are folders of instructions, scripts, and resources that AI agents can discover and use. They work with any compatible agent tool, including Claude Code, Cursor, GitHub Copilot, VS Code, Factory, Amp, Goose, and many others.
