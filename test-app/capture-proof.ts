@@ -53,9 +53,12 @@ async function main() {
     server.stop();
   }
 
-  // --- Generate report ---
-  const reportPath = await proof.report();
-  console.log(`Report: ${reportPath}`);
+  // --- Generate reports ---
+  const reportPaths = await proof.report({ format: ["md", "html", "archive"] }) as string[];
+  console.log("Reports:");
+  for (const p of reportPaths) {
+    console.log(`  ${p}`);
+  }
 
   console.log("\n=== Done. ===");
 }

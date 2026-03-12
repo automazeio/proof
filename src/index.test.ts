@@ -219,7 +219,7 @@ describe("Proof", () => {
         description: "CLI test suite",
       });
 
-      const reportPath = await proof.report();
+      const reportPath = await proof.report() as string;
       expect(reportPath).toEndWith("report.md");
       expect(existsSync(reportPath)).toBe(true);
 
@@ -230,6 +230,73 @@ describe("Proof", () => {
       expect(report).toContain("CLI test suite");
       expect(report).toContain("cli-tests");
       expect(report).toContain("@varops/proof");
+    });
+
+    test("generates html report", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      await proof.capture({
+        command: `bun test ${join(import.meta.dir, "../test-app/cli/app.test.ts")}`,
+        mode: "terminal",
+        label: "cli-tests",
+        description: "CLI test suite",
+      });
+
+      const reportPath = await proof.report({ format: "html" }) as string;
+      expect(reportPath).toEndWith("report.html");
+      expect(existsSync(reportPath)).toBe(true);
+
+      const html = await readFile(reportPath, "utf-8");
+      expect(html).toContain("<!DOCTYPE html>");
+      expect(html).toContain("Proof Report");
+      expect(html).toContain("test-app");
+      expect(html).toContain("CLI test suite");
+      expect(html).toContain("<iframe");
+    });
+
+    test("generates archive report with inlined content", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      await proof.capture({
+        command: "echo hello",
+        mode: "terminal",
+        label: "echo",
+      });
+
+      const reportPath = await proof.report({ format: "archive" }) as string;
+      expect(reportPath).toEndWith("archive.html");
+      expect(existsSync(reportPath)).toBe(true);
+
+      const html = await readFile(reportPath, "utf-8");
+      expect(html).toContain("<!DOCTYPE html>");
+      expect(html).toContain("srcdoc=");
+    });
+
+    test("generates multiple formats as array", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      await proof.capture({
+        command: "echo hello",
+        mode: "terminal",
+        label: "echo",
+      });
+
+      const paths = await proof.report({ format: ["md", "html"] }) as string[];
+      expect(paths).toHaveLength(2);
+      expect(paths[0]).toEndWith("report.md");
+      expect(paths[1]).toEndWith("report.html");
     });
 
     test("throws if no captures have been made", async () => {

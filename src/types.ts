@@ -48,3 +48,9 @@ export interface ProofManifest {
   createdAt: string;
   entries: ProofEntry[];
 }
+
+export type ReportFormat = "md" | "html" | "archive";
+
+export interface ReportOptions {
+  format?: ReportFormat | ReportFormat[];
+}
