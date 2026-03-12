@@ -122,46 +122,33 @@ function buildPlayerHtml(
 <title>${label} — proof terminal recording</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { margin: 0; padding: 1rem; background: transparent; -webkit-font-smoothing: antialiased; font-family: system-ui, sans-serif; }
+  html, body { margin: 0; height: 100%; }
+  body { background: transparent; -webkit-font-smoothing: antialiased; font-family: system-ui, sans-serif; }
   .player {
     background: #0d1117;
-    border-radius: 6px;
     overflow: hidden;
-    box-shadow: 0 0 1rem rgba(0,0,0,0.5);
-    max-width: ${Math.max(cols * 8.4 + 32, 500)}px;
     width: 100%;
+    height: 100%;
   }
-  .titlebar {
-    background: #161b22;
-    padding: 10px 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-bottom: 1px solid #30363d;
-  }
-  .dots { display: flex; gap: 6px; }
-  .dot { width: 12px; height: 12px; border-radius: 50%; }
-  .dot.r { background: #ff5f56; }
-  .dot.y { background: #ffbd2e; }
-  .dot.g { background: #27c93f; }
-  .title { color: #8b949e; font-size: 13px; margin-left: 8px; }
   #terminal {
-    height: 420px;
-    padding: 16px;
-    font-family: ui-monospace, 'SF Mono', 'Menlo', 'Monaco', 'Cascadia Code', 'Courier New', monospace;
-    font-size: 13px;
-    line-height: 1.5;
-    color: #e6edf3;
+    height: calc(100% - 40px);
+    padding: 14px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #fff;
     white-space: pre-wrap;
     word-wrap: break-word;
     overflow-y: auto;
+    opacity: .9;
   }
   .controls {
-    padding: 10px 16px;
+    padding: 6px 10px;
     border-top: 1px solid #30363d;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+    height: 40px;
   }
   .btn {
     background: none;
@@ -199,15 +186,11 @@ function buildPlayerHtml(
     width: 0%;
     transition: width 0.1s linear;
   }
-  .time { color: #8b949e; font-size: 12px; font-family: monospace; min-width: 40px; text-align: right; }
+  .time { color: #8b949e; font-size: 12px; font-family: monospace; min-width: 40px; text-align: right; line-height: 27px; }
 </style>
 </head>
 <body>
 <div class="player">
-  <div class="titlebar">
-    <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
-    <span class="title">${label}</span>
-  </div>
   <div id="terminal"></div>
   <div class="controls">
     <button class="btn" id="playBtn" onclick="toggle()">Play</button>
@@ -333,8 +316,8 @@ function seek(e) {
   }
 }
 
-// Auto-play on load
-toggle();
+// Render first frame
+renderUpTo(0);
 </script>
 </body>
 </html>`;

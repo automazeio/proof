@@ -86,6 +86,7 @@ export class Proof {
       manifest = {
         version: 1,
         appName: this.config.appName,
+        description: this.config.description,
         run: this.runName,
         createdAt: this.initTime.toISOString(),
         entries: [entry],

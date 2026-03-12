@@ -2,6 +2,7 @@ export type RecordingMode = "browser" | "terminal" | "auto";
 
 export interface ProofConfig {
   appName: string;
+  description?: string;
   proofDir?: string;
   run?: string;
   browser?: {
@@ -44,6 +45,7 @@ export interface ProofEntry {
 export interface ProofManifest {
   version: 1;
   appName: string;
+  description?: string;
   run: string;
   createdAt: string;
   entries: ProofEntry[];

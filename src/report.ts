@@ -38,16 +38,11 @@ function modeIcon(mode: string): string {
   return mode === "browser" ? "🌐" : "🖥";
 }
 
-function entrySource(entry: ProofEntry): string {
-  if (entry.testFile) return `\`${basename(entry.testFile)}\``;
-  if (entry.command) return `\`${entry.command}\``;
-  return entry.mode;
-}
-
 // --- Markdown ---
 
 function generateMd(manifest: ProofManifest, runDir: string): Promise<string> {
   const lines: string[] = [];
+  const totalDuration = manifest.entries.reduce((sum, e) => sum + e.duration, 0);
 
   lines.push(`# Proof Report`);
   lines.push(``);
@@ -55,9 +50,12 @@ function generateMd(manifest: ProofManifest, runDir: string): Promise<string> {
   lines.push(`**Run:** ${manifest.run}`);
   lines.push(`**Date:** ${formatDate(manifest.createdAt)}`);
   lines.push(`**Entries:** ${manifest.entries.length}`);
+  if (manifest.description) {
+    lines.push(``);
+    lines.push(manifest.description);
+  }
   lines.push(``);
 
-  // Summary table
   lines.push(`| # | Label | Mode | Duration | Artifact |`);
   lines.push(`|---|-------|------|----------|----------|`);
   manifest.entries.forEach((entry, i) => {
@@ -68,7 +66,6 @@ function generateMd(manifest: ProofManifest, runDir: string): Promise<string> {
   lines.push(`---`);
   lines.push(``);
 
-  // Detail sections
   for (const entry of manifest.entries) {
     lines.push(`### ${modeIcon(entry.mode)} ${entry.label ?? entry.mode}`);
     lines.push(``);
@@ -98,184 +95,97 @@ async function generateHtml(
   runDir: string,
   inline: boolean,
 ): Promise<string> {
-  const entriesHtml: string[] = [];
+  const totalDuration = manifest.entries.reduce((sum, e) => sum + e.duration, 0);
+  const terminalCount = manifest.entries.filter(e => e.mode === "terminal").length;
+  const browserCount = manifest.entries.filter(e => e.mode === "browser").length;
 
+  const sections: string[] = [];
   for (const entry of manifest.entries) {
     const mediaHtml = await buildMediaEmbed(entry, runDir, inline);
-    entriesHtml.push(`
-      <div class="entry">
-        <div class="entry-header">
-          <span class="mode-icon">${modeIcon(entry.mode)}</span>
-          <h2>${esc(entry.label ?? entry.mode)}</h2>
-          <span class="badge ${entry.mode}">${entry.mode}</span>
-          <span class="time">${formatTime(entry.timestamp)}</span>
+    const label = entry.label ?? entry.mode;
+    const isTerminal = entry.mode === "terminal";
+    const badgeClass = isTerminal
+      ? "text-green-800 bg-emerald-100/80"
+      : "text-blue-800 bg-sky-100";
+    const modeLabel = isTerminal ? "Terminal" : "Browser";
+
+    let sourceHtml = "";
+    if (entry.command) {
+      sourceHtml = `
+          <p class="font-medium text-sm mt-4 mb-1">Command:</p>
+          <div class="font-mono text-xs border px-1 rounded bg-neutral-50 border-neutral-200 subpixel-antialiased w-fit">${esc(entry.command)}</div>`;
+    } else if (entry.testFile) {
+      sourceHtml = `
+          <p class="font-medium text-sm mt-4 mb-1">Test:</p>
+          <div class="font-mono text-xs border px-1 rounded bg-neutral-50 border-neutral-200 subpixel-antialiased w-fit">${esc(basename(entry.testFile))}</div>`;
+    }
+
+    sections.push(`
+      <section class="mt-12 grid-cols-12 gap-x-6 border-t border-neutral-200 pt-12 md:grid">
+        <div class="col-span-5">
+          <h2 class="text-2xl mb-2">${esc(label)}</h2>
+          <div class="flex items-center space-x-4 subpixel-antialiased">
+            <span class="rounded ${badgeClass} px-2 py-0.5 text-sm">${modeLabel}</span>
+            <time class="font-mono text-[13px]">${formatTime(entry.timestamp)} (${formatDuration(entry.duration)})</time>
+          </div>
+          <p class="opacity-80 my-4">${esc(entry.description)}</p>
         </div>
-        <p class="description">${esc(entry.description)}</p>
-        <div class="media">${mediaHtml}</div>
-        <div class="meta">
-          ${entry.command ? `<span><strong>Command:</strong> <code>${esc(entry.command)}</code></span>` : ""}
-          ${entry.testFile ? `<span><strong>Test:</strong> <code>${esc(basename(entry.testFile))}</code></span>` : ""}
-          ${entry.testName ? `<span><strong>Test name:</strong> ${esc(entry.testName)}</span>` : ""}
-          <span><strong>Duration:</strong> ${formatDuration(entry.duration)}</span>
+        <div class="col-span-7">
+          ${mediaHtml}
+          ${sourceHtml}
         </div>
-      </div>`);
+      </section>`);
   }
 
-  const totalDuration = manifest.entries.reduce((sum, e) => sum + e.duration, 0);
+  const descriptionHtml = manifest.description
+    ? `<p class="max-w-2xl leading-relaxed opacity-80">${esc(manifest.description)}</p>`
+    : "";
+
+  const badgesHtml = [
+    terminalCount > 0 ? `<span class="whitespace-nowrap rounded font-medium text-green-800 bg-emerald-100/80 px-2 py-0.5 text-sm">${terminalCount} Terminal</span>` : "",
+    browserCount > 0 ? `<span class="whitespace-nowrap rounded font-medium text-blue-800 bg-sky-100 px-2 py-0.5 text-sm">${browserCount} Browser</span>` : "",
+  ].filter(Boolean).join("\n        ");
+
+  const tailwindScript = inline
+    ? `<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>`
+    : `<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Proof Report — ${esc(manifest.appName)}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0d1117;
-    color: #e6edf3;
-    line-height: 1.6;
-    padding: 0;
-  }
-  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
-
-  /* Header */
-  .header {
-    border-bottom: 1px solid #30363d;
-    padding-bottom: 24px;
-    margin-bottom: 32px;
-  }
-  .header h1 {
-    font-size: 28px;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-  .header h1 .app-name { color: #58a6ff; }
-  .header-meta {
-    display: flex;
-    gap: 24px;
-    color: #8b949e;
-    font-size: 14px;
-    flex-wrap: wrap;
-  }
-  .header-meta strong { color: #e6edf3; }
-
-  /* Summary */
-  .summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 16px;
-    margin-bottom: 32px;
-  }
-  .stat {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    padding: 16px;
-    text-align: center;
-  }
-  .stat .value { font-size: 24px; font-weight: 600; color: #58a6ff; }
-  .stat .label { font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
-
-  /* Entries */
-  .entry {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    margin-bottom: 24px;
-    overflow: hidden;
-  }
-  .entry-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px 20px;
-    border-bottom: 1px solid #30363d;
-  }
-  .entry-header h2 { font-size: 18px; font-weight: 600; flex: 1; }
-  .mode-icon { font-size: 20px; }
-  .badge {
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .badge.terminal { background: #1f2a1f; color: #3fb950; border: 1px solid #238636; }
-  .badge.browser { background: #1a2233; color: #58a6ff; border: 1px solid #1f6feb; }
-  .time { color: #8b949e; font-size: 13px; font-family: monospace; }
-  .description { padding: 16px 20px 0; color: #c9d1d9; }
-
-  .media { padding: 0; }
-  .media video {
-    width: 100%;
-    border-radius: 6px;
-    background: #000;
-  }
-  .media iframe {
-    width: 100%;
-    height: 540px;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-  }
-
-  /* Meta */
-  .meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    padding: 12px 20px 16px;
-    font-size: 13px;
-    color: #8b949e;
-  }
-  .meta strong { color: #c9d1d9; }
-  .meta code {
-    background: #21262d;
-    padding: 1px 6px;
-    border-radius: 3px;
-    font-size: 12px;
-    color: #e6edf3;
-  }
-
-  /* Footer */
-  .footer {
-    border-top: 1px solid #30363d;
-    padding-top: 24px;
-    margin-top: 16px;
-    text-align: center;
-    color: #484f58;
-    font-size: 13px;
-  }
-  .footer a { color: #58a6ff; text-decoration: none; }
-</style>
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover">
+<meta http-equiv="cleartype" content="on">
+<title>Proof Report - ${esc(manifest.run)}</title>
+${tailwindScript}
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <h1>Proof Report — <span class="app-name">${esc(manifest.appName)}</span></h1>
-    <div class="header-meta">
-      <span><strong>Run:</strong> ${esc(manifest.run)}</span>
-      <span><strong>Date:</strong> ${formatDate(manifest.createdAt)}</span>
-      <span><strong>Time:</strong> ${formatTime(manifest.createdAt)}</span>
+
+<div class="container mx-auto px-6 my-14 w-full max-w-5xl antialiased">
+  <header>
+    <div class="flex items-center space-x-4 mb-6">
+      <h1 class="text-4xl leading-none font-medium">Proof report</h1>
+      <span class="mt-2 rounded bg-neutral-100 px-2 py-1 font-mono text-sm leading-none">${esc(manifest.run)}</span>
     </div>
-  </div>
 
-  <div class="summary">
-    <div class="stat"><div class="value">${manifest.entries.length}</div><div class="label">Captures</div></div>
-    <div class="stat"><div class="value">${manifest.entries.filter(e => e.mode === "terminal").length}</div><div class="label">Terminal</div></div>
-    <div class="stat"><div class="value">${manifest.entries.filter(e => e.mode === "browser").length}</div><div class="label">Browser</div></div>
-    <div class="stat"><div class="value">${formatDuration(totalDuration)}</div><div class="label">Total Duration</div></div>
-  </div>
+    ${descriptionHtml}
 
-  ${entriesHtml.join("\n")}
+    <div class="mt-6 md:flex md:items-center md:space-x-4 leading-none">
+      <span class="block mb-2 md:inline md:m-0">${formatDate(manifest.createdAt)} &middot; ${formatTime(manifest.createdAt)} (${formatDuration(totalDuration)})</span>
+      ${badgesHtml}
+    </div>
 
-  <div class="footer">
-    Generated by <a href="https://www.npmjs.com/package/@varops/proof">@varops/proof</a>
-  </div>
+    <p class="my-6">Generated by <a href="https://www.npmjs.com/package/@varops/proof" class="font-medium text-blue-600">@varops/proof</a></p>
+  </header>
+
+  <main>
+    ${sections.join("\n")}
+  </main>
+
+  <footer></footer>
 </div>
+
 </body>
 </html>`;
 
@@ -297,17 +207,17 @@ async function buildMediaEmbed(
       const videoData = await readFile(artifactPath);
       const ext = entry.artifact.endsWith(".mp4") ? "mp4" : "webm";
       const b64 = videoData.toString("base64");
-      return `<video controls autoplay muted loop src="data:video/${ext};base64,${b64}"></video>`;
+      return `<video class="bg-black w-full shadow-xs rounded-md aspect-3/2" controls muted loop src="data:video/${ext};base64,${b64}"></video>`;
     }
-    return `<video controls autoplay muted loop src="./${esc(entry.artifact)}"></video>`;
+    return `<video class="bg-neutral-200 w-full rounded-md aspect-3/2" controls muted loop src="./${esc(entry.artifact)}"></video>`;
   }
 
   if (entry.mode === "terminal") {
     if (inline) {
       const playerHtml = await readFile(artifactPath, "utf-8");
-      return `<iframe allowtransparency="true" srcdoc="${escAttr(playerHtml)}"></iframe>`;
+      return `<iframe class="w-full aspect-3/2 rounded-lg bg-black" allowtransparency="true" srcdoc="${escAttr(playerHtml)}"></iframe>`;
     }
-    return `<iframe allowtransparency="true" src="./${esc(entry.artifact)}"></iframe>`;
+    return `<iframe class="w-full aspect-3/2 rounded-lg bg-black" allowtransparency="true" src="./${esc(entry.artifact)}"></iframe>`;
   }
 
   return `<a href="./${esc(entry.artifact)}">${esc(entry.artifact)}</a>`;
