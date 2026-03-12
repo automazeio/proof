@@ -1,8 +1,23 @@
-# @automaze/proof
+# Proof
 
-A 10-second recording of your tests passing is worth more than a 200-line diff.
+[![Automaze](https://img.shields.io/badge/By-automaze.io-4b3baf)](https://automaze.io)
+&nbsp;
+[![Agent Skill](https://img.shields.io/badge/+-Agent%20Skill-ee9e33)](https://github.com/automazeio/proof/tree/main/skill)
+[![GitHub Issues](https://img.shields.io/badge/+-GitHub%20Issues-1f2328)](https://github.com/automazeio/proof)
+&nbsp;
+[![Apache License](https://img.shields.io/badge/License-Apache%202.0-28a745)](https://github.com/automazeio/proof/blob/main/LICENSE)
+&nbsp;
+[![Follow on 𝕏](https://img.shields.io/badge/𝕏-@aroussi-1c9bf0)](http://x.com/intent/follow?screen_name=aroussi)
+&nbsp;
+[![Star this repo](https://img.shields.io/github/stars/automazeio/proof.svg?style=social&label=Star%20this%20repo&maxAge=60)](https://github.com/automazeio/proof)
+
+### A 10-second recording of your tests passing is worth more than a 200-line diff.
 
 `proof` captures terminal output and browser interactions as shareable evidence -- animated HTML replays, videos, and structured reports. Run your tests through proof, get artifacts you can attach to PRs, send to stakeholders, or keep as a record.
+
+![Proof](screenshot.webp)
+
+## Get started
 
 ```bash
 npm install @automaze/proof
