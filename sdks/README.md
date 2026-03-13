@@ -3,18 +3,18 @@
 One CLI binary. Three ways to use it.
 
 ```
-┌──────────────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────────┐
 │  Install                                              │
 │  curl -fsSL https://automaze.io/install/proof | sh    │
 │  brew install automazeio/tap/proof                    │
 │  npm install -g @automaze/proof                       │
-├──────────────────────────────────────────────────────┤
+├───────────────────────────────────────────────────────┤
 │  Use from any language                                │
 │  TypeScript   import { Proof } from "@automaze/proof" │
 │  Python       from proof import Proof                 │
 │  Go           proof.New(proof.Config{...})            │
 │  Any          echo '{}' | proof --json                │
-└──────────────────────────────────────────────────────┘
+└───────────────────────────────────────────────────────┘
 ```
 
 ## Install the binary
