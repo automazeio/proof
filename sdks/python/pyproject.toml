@@ -1,13 +1,13 @@
 [project]
 name = "automaze-proof"
-version = "0.1.0"
+version = "0.20260313.0"
 description = "Capture visual evidence of test execution"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = []
 license = "Apache-2.0"
 authors = [
-    { name = "Ran Aroussi", email = "ran@automaze.io" },
+    { name = "Ran Aroussi", email = "opensource@automaze.io" },
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

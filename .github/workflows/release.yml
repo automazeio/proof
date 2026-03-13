@@ -59,6 +59,7 @@ jobs:
           generate_release_notes: true
           files: binaries/*
 
+      # --- npm publish ---
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -79,3 +80,22 @@ jobs:
       - run: bun run build
 
       - run: npm publish --access public
+
+      # --- PyPI publish ---
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build Python package
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd sdks/python
+          sed -i "s/^version = .*/version = \"$VERSION\"/" pyproject.toml
+          sed -i "s/^__version__ = .*/__version__ = \"$VERSION\"/" proof/__init__.py
+          pip install build
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: sdks/python/dist/

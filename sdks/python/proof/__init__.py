@@ -8,7 +8,7 @@ import subprocess
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
-__version__ = "0.1.0"
+__version__ = "0.20260313.0"
 
 INSTALL_HELP = (
     "proof CLI not found on PATH. Install it:\n\n"
