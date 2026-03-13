@@ -28,7 +28,7 @@ if ($Help) {
 proof installer - Windows
 
 USAGE:
-    irm https://raw.githubusercontent.com/automazeio/proof/main/install.ps1 | iex
+    irm https://automaze.io/install/proof | iex
 
 OPTIONS:
     -Version    Install a specific version (default: latest)
@@ -48,29 +48,33 @@ $Arch = if ([Environment]::Is64BitOperatingSystem) {
 # Install directory
 $InstallDir = "$env:LOCALAPPDATA\proof\bin"
 
-# Resolve version
+# Resolve version and tag
+$Tag = $null
 if (-not $Version) {
     $Version = $env:PROOF_VERSION
 }
-if (-not $Version) {
+if ($Version) {
+    $Tag = "v${Version}"
+} else {
     try {
-        $response = Invoke-WebRequest -Uri "https://github.com/automazeio/proof/releases/latest" -MaximumRedirection 0 -ErrorAction SilentlyContinue
+        Invoke-WebRequest -Uri "https://github.com/automazeio/proof/releases/latest" -MaximumRedirection 0 -ErrorAction SilentlyContinue | Out-Null
     } catch {
         if ($_.Exception.Response.Headers.Location) {
             $location = $_.Exception.Response.Headers.Location.ToString()
-            if ($location -match "/tag/v(.+)$") {
-                $Version = $matches[1]
+            if ($location -match "/tag/(.+)$") {
+                $Tag = $matches[1]
+                $Version = $Tag -replace '^v', ''
             }
         }
     }
-    if (-not $Version) {
+    if (-not $Tag) {
         Write-Host "${Cross} Failed to detect latest version"
         exit 1
     }
 }
 
 $BinaryName = "proof-windows-${Arch}.exe"
-$DownloadUrl = "https://github.com/automazeio/proof/releases/download/v${Version}/${BinaryName}"
+$DownloadUrl = "https://github.com/automazeio/proof/releases/download/${Tag}/${BinaryName}"
 
 Write-Host ""
 Write-Host "${Bold}proof${Reset} installer"
