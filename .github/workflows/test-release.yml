@@ -1,0 +1,63 @@
+name: Test Binary Release
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - target: bun-darwin-arm64
+            binary: proof-darwin-arm64
+          - target: bun-darwin-x64
+            binary: proof-darwin-x64
+          - target: bun-linux-x64
+            binary: proof-linux-x64
+          - target: bun-linux-arm64
+            binary: proof-linux-arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build binary
+        run: bun build --compile --target=${{ matrix.target }} ./src/cli.ts --outfile ${{ matrix.binary }}
+
+      - name: Show binary info
+        run: ls -lh ${{ matrix.binary }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary }}
+          path: ${{ matrix.binary }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: binaries
+          merge-multiple: true
+
+      - name: List binaries
+        run: ls -lh binaries/
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test-binary-release
+          name: "Test Binary Release"
+          body: "Test release to verify binary builds. Safe to delete."
+          draft: true
+          files: binaries/*
