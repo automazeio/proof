@@ -1,25 +1,35 @@
 # SDKs
 
-The TypeScript SDK (`@automaze/proof`) is available today on [npm](https://www.npmjs.com/package/@automaze/proof).
+Thin, idiomatic SDKs that wrap the proof CLI binary. All SDKs require the `proof` binary on PATH.
 
-We're working on thin SDKs for **Python** and **Go** that wrap the proof CLI. These let you call `proof.capture()` natively in your language without shelling out or managing JSON yourself. See [PLAN.md](./PLAN.md) for the full design.
-
-All SDKs require the proof CLI on PATH:
+## Install the binary
 
 ```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/automazeio/proof/main/install.sh | sh
+
+# macOS / Linux (Homebrew)
+brew install automazeio/tap/proof
+
+# Windows
+irm https://raw.githubusercontent.com/automazeio/proof/main/install.ps1 | iex
+
+# Node.js users
 npm install -g @automaze/proof
 ```
 
-In the meantime, the CLI already outputs structured JSON and accepts JSON via stdin, so you can integrate with any language today:
-
-```bash
-echo '{"action":"capture","appName":"my-app","command":"pytest tests/","mode":"terminal"}' | proof --json
-```
-
-## Status
+## SDKs
 
 | Language | Package | Status |
 |----------|---------|--------|
 | TypeScript | [`@automaze/proof`](https://www.npmjs.com/package/@automaze/proof) | Available |
-| Python | `automaze-proof` | [In progress](./PLAN.md#python-sdk) |
-| Go | `github.com/automazeio/proof-go` | [In progress](./PLAN.md#go-sdk) |
+| Python | `automaze-proof` | Planned |
+| Go | `github.com/automazeio/proof-go` | Planned |
+
+SDKs expect `proof` on PATH and raise a clear error with install instructions if missing. See [PLAN.md](./PLAN.md) for the full design.
+
+You can integrate with any language today using the CLI's JSON interface:
+
+```bash
+echo '{"action":"capture","appName":"my-app","command":"pytest tests/","mode":"terminal"}' | proof --json
+```
