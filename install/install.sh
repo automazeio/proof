@@ -64,10 +64,12 @@ fi
 
 # Resolve latest version if not specified
 if [ -z "$VERSION" ]; then
-    VERSION=$(curl -sI "https://github.com/automazeio/proof/releases/latest" \
-        | grep -i location \
-        | sed 's|.*/tag/v||' \
-        | tr -d '\r\n')
+    LATEST_URL=$(curl -sI "https://github.com/automazeio/proof/releases/latest" \
+        | tr -d '\r' \
+        | grep -i '^location:' \
+        | awk '{print $2}')
+    TAG=$(echo "$LATEST_URL" | sed 's|.*/tag/||')
+    VERSION=$(echo "$TAG" | sed 's|^v||')
     if [ -z "$VERSION" ]; then
         echo -e "${CROSS} Failed to detect latest version"
         exit 1
