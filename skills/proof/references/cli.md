@@ -1,13 +1,18 @@
-# Proof: CLI
+# proof CLI
 
-Use `proof` from the command line to capture terminal output and browser recordings without writing TypeScript. All output is JSON to stdout, making it easy to integrate with CI pipelines, shell scripts, and non-JS toolchains.
+Use `proof` from the command line to capture terminal output and browser recordings. All output is JSON to stdout, making it easy to integrate with CI pipelines, shell scripts, and any language.
 
 ## Install
 
 ```bash
+# macOS / Linux
+curl -fsSL https://automaze.io/install/proof | sh
+
+# Homebrew
+brew install automazeio/tap/proof
+
+# npm (if you have Node.js)
 npm install -g @automaze/proof
-# or use npx
-npx @automaze/proof --help
 ```
 
 ## Commands
@@ -145,7 +150,7 @@ Output:
 }
 ```
 
-For a single capture, you can skip the `captures` array and put the fields at the top level:
+For a single capture, skip the `captures` array and put fields at the top level:
 
 ```json
 {
@@ -173,7 +178,7 @@ For reports:
 
 ```yaml
 - name: Install proof
-  run: npm install -g @automaze/proof
+  run: curl -fsSL https://automaze.io/install/proof | sh
 
 - name: Run tests with proof
   run: |
@@ -217,7 +222,7 @@ Errors are output as JSON to stderr:
 { "error": "No proof.json found — run capture() first" }
 ```
 
-The exit code is `1` on error, `0` on success.
+Exit code is `1` on error, `0` on success.
 
 ## Environment variables
 

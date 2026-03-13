@@ -1,9 +1,10 @@
 ---
 name: proof
 description: >
-  Use @automaze/proof to capture test runs as shareable, replayable evidence artifacts.
+  Use proof to capture test runs as shareable, replayable evidence artifacts.
   Invoke this skill whenever the user wants to preserve or share proof that tests passed —
-  not just run tests, but document and share the results. Key use cases: attaching terminal
+  not just run tests, but document and share the results. Works from any language:
+  standalone binary, TypeScript, Python, or Go SDKs. Key use cases: attaching terminal
   output to a PR so reviewers can replay the test session instead of trusting a screenshot;
   generating a markdown proof report to embed in PR descriptions or tickets; recording a
   browser test run as a self-contained HTML video to share with a PM or QA team; or creating
@@ -12,10 +13,10 @@ description: >
   "proof report", "record my test run", "share test results", "visual proof tests pass",
   "terminal recording of tests", or whenever someone wants reviewers or stakeholders to
   see test execution without re-running it themselves. Also trigger when the user mentions
-  @automaze/proof directly.
+  proof, @automaze/proof, or automaze-proof directly.
 ---
 
-# @automaze/proof
+# proof
 
 Capture evidence that code works. Terminal replays, browser videos, structured reports.
 
@@ -27,34 +28,43 @@ Capture evidence that code works. Terminal replays, browser videos, structured r
 - User wants to attach test recordings to PRs or share them
 - User mentions "proof", "evidence", or "capture" in the context of testing
 
-## Installation check
+## Install
 
-Before using proof, verify it's installed:
-
-```bash
-npx @automaze/proof --help
-```
-
-If not available, install it:
+proof ships as a standalone binary. No Node.js required.
 
 ```bash
-npm install @automaze/proof
-# or globally
+# macOS / Linux
+curl -fsSL https://automaze.io/install/proof | sh
+
+# Homebrew
+brew install automazeio/tap/proof
+
+# npm (if you have Node.js)
 npm install -g @automaze/proof
+
+# Verify
+proof --version
 ```
 
-## Two interfaces
+## Choose your interface
 
-### 1. CLI (preferred for agents)
+| Interface | Install | Best for |
+|-----------|---------|----------|
+| CLI binary | `curl` / `brew` | Shell scripts, CI, any language |
+| TypeScript SDK | `npm install @automaze/proof` | Node.js / Bun projects |
+| Python SDK | `pip install automaze-proof` | Python projects, pytest |
+| Go SDK | `go get github.com/automazeio/proof-go` | Go projects |
 
-The CLI outputs JSON to stdout, making it ideal for agent consumption.
+All SDKs are thin wrappers around the same CLI binary.
 
-#### Terminal capture
+## CLI (works everywhere)
 
-Record any shell command with real timestamps and ANSI color output:
+The CLI outputs JSON to stdout, making it ideal for agent consumption and scripting.
+
+### Terminal capture
 
 ```bash
-npx @automaze/proof capture \
+proof capture \
   --app <app-name> \
   --command "<shell command>" \
   --mode terminal \
@@ -64,12 +74,10 @@ npx @automaze/proof capture \
   --description "<what this captures>"
 ```
 
-#### Browser capture
-
-Record a Playwright test with video:
+### Browser capture
 
 ```bash
-npx @automaze/proof capture \
+proof capture \
   --app <app-name> \
   --test-file <path/to/test.spec.ts> \
   --mode browser \
@@ -77,37 +85,28 @@ npx @automaze/proof capture \
   --dir <output-dir>
 ```
 
-Requires `@playwright/test` installed and `video: 'on'` in playwright config.
-
-#### Generate report
+### Generate report
 
 ```bash
-npx @automaze/proof report \
-  --app <app-name> \
-  --dir <output-dir> \
-  --run <run-name>
+proof report --app <app-name> --dir <output-dir> --run <run-name>
 ```
 
-#### JSON stdin mode (multi-capture)
-
-For multiple captures in one invocation:
+### JSON stdin mode (multi-capture)
 
 ```bash
 echo '{
   "action": "capture",
-  "appName": "<app-name>",
-  "proofDir": "<output-dir>",
-  "run": "<run-name>",
+  "appName": "my-app",
+  "proofDir": "./evidence",
+  "run": "full-suite",
   "captures": [
     { "command": "npm test", "mode": "terminal", "label": "unit" },
     { "command": "npm run lint", "mode": "terminal", "label": "lint" }
   ]
-}' | npx @automaze/proof --json
+}' | proof --json
 ```
 
-#### CLI output format
-
-All CLI output is JSON to stdout:
+### CLI output format
 
 ```json
 {
@@ -125,21 +124,17 @@ All CLI output is JSON to stdout:
 }
 ```
 
-### 2. TypeScript SDK
-
-For programmatic usage within Node.js/Bun scripts:
+## TypeScript SDK
 
 ```typescript
 import { Proof } from "@automaze/proof";
 
 const proof = new Proof({
   appName: "my-app",
-  description: "Optional run description",
   proofDir: "./evidence",
   run: "deploy-v2",
 });
 
-// Terminal capture
 await proof.capture({
   command: "npm test",
   mode: "terminal",
@@ -147,27 +142,79 @@ await proof.capture({
   description: "Unit test suite",
 });
 
-// Browser capture
-await proof.capture({
-  testFile: "tests/checkout.spec.ts",
-  mode: "browser",
-  label: "checkout",
-});
-
-// Generate reports (md is default)
 await proof.report();
 await proof.report({ format: "html" });
 await proof.report({ format: "archive" });
-await proof.report({ format: ["md", "html", "archive"] });
 ```
+
+See [TypeScript SDK reference](references/typescript.md) for full API.
+
+## Python SDK
+
+```bash
+pip install automaze-proof
+```
+
+```python
+from proof import Proof
+
+p = Proof(app_name="my-app", proof_dir="./evidence", run="deploy-v2")
+
+rec = p.capture(command="pytest tests/ -v", mode="terminal", label="tests")
+print(rec.path)      # /abs/path/tests-143012.html
+print(rec.duration)  # 2400
+
+p.report()
+p.report(format="html")
+```
+
+### pytest fixture
+
+```python
+# conftest.py
+import pytest
+from proof import Proof
+
+@pytest.fixture(scope="session", autouse=True)
+def proof_session(tmp_path_factory):
+    p = Proof(app_name="my-app", proof_dir="./evidence")
+    yield p
+    p.report()
+```
+
+See [Python SDK reference](references/python.md) for full API.
+
+## Go SDK
+
+```bash
+go get github.com/automazeio/proof-go
+```
+
+```go
+import "github.com/automazeio/proof-go/proof"
+
+p, err := proof.New(proof.Config{AppName: "my-app", ProofDir: "./evidence"})
+rec, err := p.Capture(proof.CaptureOptions{
+    Command: "go test ./...",
+    Mode:    "terminal",
+    Label:   "tests",
+})
+fmt.Println(rec.Path, rec.Duration)
+
+p.Report(proof.ReportOptions{})
+```
+
+The Go SDK auto-downloads the binary on first use if not on PATH.
+
+See [Go SDK reference](references/go.md) for full API.
 
 ## Report formats
 
 | Format | File | Use case |
 |--------|------|----------|
 | `md` | `report.md` | Default. Markdown summary, paste into PRs |
-| `html` | `report.html` | Visual HTML report with embedded media. Needs sibling artifact files |
-| `archive` | `archive.html` | Single self-contained HTML. Videos base64-encoded, players inlined. Fully portable |
+| `html` | `report.html` | Visual HTML report with embedded media |
+| `archive` | `archive.html` | Single self-contained HTML. Fully portable |
 
 ## Output structure
 
@@ -180,19 +227,13 @@ await proof.report({ format: ["md", "html", "archive"] });
   report.md                 # generated report
 ```
 
-## Common workflows for agents
+## Common agent workflows
 
 ### Record test execution after making changes
 
 ```bash
-# After implementing a feature, capture the test run
-npx @automaze/proof capture \
-  --app my-app \
-  --command "npm test" \
-  --mode terminal \
-  --label tests \
-  --dir ./evidence \
-  --run "$(date +%H%M)" \
+proof capture --app my-app --command "npm test" --mode terminal \
+  --label tests --dir ./evidence --run "$(date +%H%M)" \
   --description "Tests after implementing feature X"
 ```
 
@@ -205,18 +246,17 @@ echo '{
   "proofDir": "./evidence",
   "run": "full-suite",
   "captures": [
-    { "command": "npm run test:unit", "mode": "terminal", "label": "unit", "description": "Unit tests" },
-    { "command": "npm run test:integration", "mode": "terminal", "label": "integration", "description": "Integration tests" },
-    { "command": "npm run lint", "mode": "terminal", "label": "lint", "description": "Linting" }
+    { "command": "npm run test:unit", "mode": "terminal", "label": "unit" },
+    { "command": "npm run test:integration", "mode": "terminal", "label": "integration" },
+    { "command": "npm run lint", "mode": "terminal", "label": "lint" }
   ]
-}' | npx @automaze/proof --json
+}' | proof --json
 ```
 
-### Generate a report to attach to a PR
+### Generate report for a PR
 
 ```bash
-npx @automaze/proof report --app my-app --dir ./evidence --run full-suite
-# Returns JSON with path to report.md
+proof report --app my-app --dir ./evidence --run full-suite
 ```
 
 ## Key constraints
@@ -224,18 +264,12 @@ npx @automaze/proof report --app my-app --dir ./evidence --run full-suite
 - Terminal mode requires `--command`
 - Browser mode requires `--test-file`
 - `--app` is always required
-- CLI always outputs JSON to stdout, errors go to stderr as JSON
-- The `proof.json` manifest is append-only within a run
+- CLI always outputs JSON to stdout, errors go to stderr
 - Report generation requires at least one capture in the run
-
-## Environment variables
-
-| Variable | Description |
-|----------|-------------|
-| `PROOF_DIR` | Override default proof directory |
-| `PROOF_MODE` | Force `browser` or `terminal` mode |
 
 ## References
 
-- [TypeScript SDK guide](references/typescript.md)
 - [CLI guide](references/cli.md)
+- [TypeScript SDK](references/typescript.md)
+- [Python SDK](references/python.md)
+- [Go SDK](references/go.md)
