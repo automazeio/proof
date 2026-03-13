@@ -20,11 +20,20 @@
 ## Get started
 
 ```bash
-# Global install (recommended for CLI usage)
-npm install -g @automaze/proof
+# macOS / Linux
+curl -fsSL https://automaze.io/install/proof | sh
 
-# Or as a project dependency
-npm install @automaze/proof
+# Windows (PowerShell)
+irm https://automaze.io/install/proof | iex
+
+# Homebrew
+brew install automazeio/tap/proof
+```
+
+Or install via npm (requires Node.js):
+
+```bash
+npm install -g @automaze/proof
 ```
 
 ## What it produces
