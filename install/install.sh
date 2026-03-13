@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # proof install script
 # https://automaze.io/install/proof
@@ -42,7 +42,7 @@ case "$ARCH" in
     x86_64)       ARCH="x64" ;;
     aarch64|arm64) ARCH="arm64" ;;
     *)
-        echo -e "${CROSS} Unsupported architecture: $ARCH"
+        printf "${CROSS} Unsupported architecture: %s\n" "$ARCH"
         exit 1
         ;;
 esac
@@ -50,7 +50,7 @@ esac
 case "$OS" in
     linux|darwin) ;;
     *)
-        echo -e "${CROSS} Unsupported OS: $OS (use install.ps1 for Windows)"
+        printf "${CROSS} Unsupported OS: %s (use install.ps1 for Windows)\n" "$OS"
         exit 1
         ;;
 esac
@@ -70,7 +70,7 @@ if [ -z "$VERSION" ]; then
         | awk '{print $2}')
     TAG=$(echo "$LATEST_URL" | sed 's|.*/tag/||')
     if [ -z "$TAG" ]; then
-        echo -e "${CROSS} Failed to detect latest version"
+        printf "${CROSS} Failed to detect latest version\n"
         exit 1
     fi
     VERSION=$(echo "$TAG" | sed 's|^v||')
@@ -81,17 +81,17 @@ fi
 BINARY_NAME="proof-${OS}-${ARCH}"
 DOWNLOAD_URL="https://github.com/automazeio/proof/releases/download/${TAG}/${BINARY_NAME}"
 
-echo ""
-echo -e "${BOLD}proof${NC} installer"
-echo ""
-echo -e "  Version:  ${CYAN}${VERSION}${NC}"
-echo -e "  Platform: ${CYAN}${OS}/${ARCH}${NC}"
-echo -e "  Target:   ${CYAN}${INSTALL_DIR}/proof${NC}"
-echo ""
+printf "\n"
+printf "${BOLD}proof${NC} installer\n"
+printf "\n"
+printf "  Version:  ${CYAN}%s${NC}\n" "$VERSION"
+printf "  Platform: ${CYAN}%s/%s${NC}\n" "$OS" "$ARCH"
+printf "  Target:   ${CYAN}%s/proof${NC}\n" "$INSTALL_DIR"
+printf "\n"
 
 # Check for curl
 if ! command -v curl >/dev/null 2>&1; then
-    echo -e "${CROSS} curl is required but not installed"
+    printf "${CROSS} curl is required but not installed\n"
     exit 1
 fi
 
@@ -104,60 +104,63 @@ trap "rm -rf $TMP_DIR" EXIT
 
 printf "  Downloading..."
 if ! curl -fsSL -o "$TMP_DIR/proof" "$DOWNLOAD_URL" 2>/dev/null; then
-    echo ""
-    echo -e "${CROSS} Download failed: $DOWNLOAD_URL"
-    echo ""
-    echo "  Check available versions at:"
-    echo "  https://github.com/automazeio/proof/releases"
+    printf "\n"
+    printf "${CROSS} Download failed: %s\n" "$DOWNLOAD_URL"
+    printf "\n"
+    printf "  Check available versions at:\n"
+    printf "  https://github.com/automazeio/proof/releases\n"
     exit 1
 fi
-echo -e " ${CHECK}"
+printf " ${CHECK}\n"
 
 # Install
 chmod +x "$TMP_DIR/proof"
 mv "$TMP_DIR/proof" "$INSTALL_DIR/proof"
-echo -e "  Installed ${CHECK}"
+printf "  Installed ${CHECK}\n"
 
 # PATH check
 PATH_UPDATED=0
-if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-    SHELL_NAME=$(basename "${SHELL:-/bin/sh}")
-    case "$SHELL_NAME" in
-        bash)
-            if [ "$OS" = "darwin" ]; then
-                SHELL_CONFIG="$HOME/.bash_profile"
+case ":$PATH:" in
+    *":$INSTALL_DIR:"*) ;;
+    *)
+        SHELL_NAME=$(basename "${SHELL:-/bin/sh}")
+        case "$SHELL_NAME" in
+            bash)
+                if [ "$OS" = "darwin" ]; then
+                    SHELL_CONFIG="$HOME/.bash_profile"
+                else
+                    SHELL_CONFIG="$HOME/.bashrc"
+                fi
+                ;;
+            zsh)  SHELL_CONFIG="$HOME/.zshrc" ;;
+            fish) SHELL_CONFIG="$HOME/.config/fish/config.fish" ;;
+            *)    SHELL_CONFIG="" ;;
+        esac
+
+        if [ -n "$SHELL_CONFIG" ]; then
+            printf "\n" >> "$SHELL_CONFIG"
+            printf "# Added by proof installer\n" >> "$SHELL_CONFIG"
+            if [ "$SHELL_NAME" = "fish" ]; then
+                printf "set -gx PATH %s \$PATH\n" "$INSTALL_DIR" >> "$SHELL_CONFIG"
             else
-                SHELL_CONFIG="$HOME/.bashrc"
+                printf "export PATH=\"%s:\$PATH\"\n" "$INSTALL_DIR" >> "$SHELL_CONFIG"
             fi
-            ;;
-        zsh)  SHELL_CONFIG="$HOME/.zshrc" ;;
-        fish) SHELL_CONFIG="$HOME/.config/fish/config.fish" ;;
-        *)    SHELL_CONFIG="" ;;
-    esac
-
-    if [ -n "$SHELL_CONFIG" ]; then
-        echo "" >> "$SHELL_CONFIG"
-        echo "# Added by proof installer" >> "$SHELL_CONFIG"
-        if [ "$SHELL_NAME" = "fish" ]; then
-            echo "set -gx PATH $INSTALL_DIR \$PATH" >> "$SHELL_CONFIG"
-        else
-            echo "export PATH=\"$INSTALL_DIR:\$PATH\"" >> "$SHELL_CONFIG"
+            PATH_UPDATED=1
         fi
-        PATH_UPDATED=1
-    fi
-fi
+        ;;
+esac
 
-echo ""
-echo -e "${CHECK} proof ${VERSION} installed successfully!"
-echo ""
+printf "\n"
+printf "${CHECK} proof %s installed successfully!\n" "$VERSION"
+printf "\n"
 
 if [ "$PATH_UPDATED" = "1" ]; then
-    echo -e "  Run ${CYAN}source $SHELL_CONFIG${NC} or open a new terminal."
-    echo ""
+    printf "  Run ${CYAN}source %s${NC} or open a new terminal.\n" "$SHELL_CONFIG"
+    printf "\n"
 fi
 
-echo "  Get started:"
-echo -e "    ${CYAN}proof capture --app my-app --command \"npm test\" --mode terminal${NC}"
-echo ""
-echo "  Docs: https://github.com/automazeio/proof"
-echo ""
+printf "  Get started:\n"
+printf "    ${CYAN}proof capture --app my-app --command \"npm test\" --mode terminal${NC}\n"
+printf "\n"
+printf "  Docs: https://github.com/automazeio/proof\n"
+printf "\n"
