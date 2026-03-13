@@ -63,7 +63,17 @@ export async function captureTerminal(
     });
   });
 
-  const duration = Date.now() - startTime;
+  // Trim dead time: shift all events so first output starts at t=0
+  if (events.length > 0) {
+    const offset = events[0].time;
+    for (const evt of events) {
+      evt.time -= offset;
+    }
+  }
+
+  const duration = events.length > 0
+    ? events[events.length - 1].time * 1000
+    : Date.now() - startTime;
   const realDurationSec = duration / 1000;
 
   // Pick default speed so playback lasts at least ~2s
