@@ -6,10 +6,10 @@ Thin, idiomatic SDKs that wrap the proof CLI binary. All SDKs require the `proof
 
 ```bash
 # macOS / Linux
-curl -fsSL https://getproof.sh/install | sh
+curl -fsSL https://automaze.io/install/proof | sh
 
 # Windows (PowerShell)
-irm https://getproof.sh/install | iex
+irm https://automaze.io/install/proof | iex
 
 # Homebrew
 brew install automazeio/tap/proof

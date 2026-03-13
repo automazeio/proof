@@ -1,11 +1,11 @@
 #!/bin/bash
 #
 # proof install script
-# https://getproof.sh
+# https://automaze.io/install/proof
 #
 # Usage:
-#   curl -fsSL https://getproof.sh/install | sh
-#   curl -fsSL https://getproof.sh/install | sh -s -- --version 0.20260312.1
+#   curl -fsSL https://automaze.io/install/proof | sh
+#   curl -fsSL https://automaze.io/install/proof | sh -s -- --version 0.20260312.1
 #
 
 set -e

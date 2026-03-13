@@ -1,15 +1,15 @@
 # Install proof
 
-Standalone binary installers. `getproof.sh/install` detects the OS and serves the right script.
+Standalone binary installers. `automaze.io/install/proof` detects the OS and serves the right script.
 
 ## Quick install
 
 ```bash
 # macOS / Linux
-curl -fsSL https://getproof.sh/install | sh
+curl -fsSL https://automaze.io/install/proof | sh
 
 # Windows (PowerShell)
-irm https://getproof.sh/install | iex
+irm https://automaze.io/install/proof | iex
 
 # Homebrew
 brew install automazeio/tap/proof
@@ -26,10 +26,10 @@ brew install automazeio/tap/proof
 
 ```bash
 # Install a specific version
-curl -fsSL https://getproof.sh/install | sh -s -- --version 0.20260312.1
+curl -fsSL https://automaze.io/install/proof | sh -s -- --version 0.20260312.1
 
 # Windows: specific version
-$env:PROOF_VERSION = "0.20260312.1"; irm https://getproof.sh/install | iex
+$env:PROOF_VERSION = "0.20260312.1"; irm https://automaze.io/install/proof | iex
 ```
 
 ## Files
@@ -49,17 +49,15 @@ $env:PROOF_VERSION = "0.20260312.1"; irm https://getproof.sh/install | iex
 | Linux | arm64 | `proof-linux-arm64` |
 | Windows | x64 | `proof-windows-x64.exe` |
 
-## getproof.sh setup
+## automaze.io/install/proof setup
 
-Point `getproof.sh/install` to serve based on User-Agent:
+Point `automaze.io/install/proof` to serve based on User-Agent:
 
 - PowerShell UA -> serve `install.ps1`
 - Everything else -> serve `install.sh`
 
-Or use a simple redirect:
+Or use simple redirects:
 ```
-https://getproof.sh/install -> https://raw.githubusercontent.com/automazeio/proof/main/install/install.sh
-https://getproof.sh/install.ps1 -> https://raw.githubusercontent.com/automazeio/proof/main/install/install.ps1
+https://automaze.io/install/proof     -> .../install/install.sh
+https://automaze.io/install/proof.ps1 -> .../install/install.ps1
 ```
-
-PowerShell's `irm` (Invoke-RestMethod) will execute whatever it gets, so both `irm https://getproof.sh/install | iex` and `irm https://getproof.sh/install.ps1 | iex` work as long as the response is the ps1 content.
