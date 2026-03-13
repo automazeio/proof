@@ -46,22 +46,55 @@ npm install -g @automaze/proof
 
 ## Quick start
 
+Use proof from TypeScript, Python, Go, or the CLI directly.
+
+**TypeScript**
+
 ```typescript
 import { Proof } from "@automaze/proof";
 
 const proof = new Proof({ appName: "my-app", proofDir: "./evidence" });
-
-await proof.capture({
-  command: "npm test",
-  mode: "terminal",
-  label: "unit-tests",
-});
-
+await proof.capture({ command: "npm test", mode: "terminal", label: "unit-tests" });
 await proof.report();
-// -> evidence/my-app/20260312/1430/report.md
+```
+
+**Python** (`pip install automaze-proof`)
+
+```python
+from proof import Proof
+
+p = Proof(app_name="my-app", proof_dir="./evidence")
+p.capture(command="pytest tests/ -v", mode="terminal", label="unit-tests")
+p.report()
+```
+
+**Go** (`go get github.com/automazeio/proof-go`)
+
+```go
+p, _ := proof.New(proof.Config{AppName: "my-app", ProofDir: "./evidence"})
+p.Capture(proof.CaptureOptions{Command: "go test ./...", Mode: "terminal", Label: "unit-tests"})
+p.Report(proof.ReportOptions{})
+```
+
+**CLI**
+
+```bash
+proof capture --app my-app --command "make test" --mode terminal --label unit-tests --dir ./evidence
+proof report --app my-app --dir ./evidence
 ```
 
 That's it. `evidence/` now contains an animated HTML replay of your test run and a manifest describing what was captured.
+
+## SDKs
+
+All SDKs are thin wrappers around the same CLI binary.
+
+| Language | Package | Install |
+|----------|---------|---------|
+| TypeScript | [`@automaze/proof`](https://www.npmjs.com/package/@automaze/proof) | `npm install @automaze/proof` |
+| Python | [`automaze-proof`](https://pypi.org/project/automaze-proof/) | `pip install automaze-proof` |
+| Go | [`proof-go`](https://github.com/automazeio/proof-go) | `go get github.com/automazeio/proof-go` |
+| Any language | CLI + JSON | `proof --json` with stdin/stdout |
 
 ## Terminal mode
 
