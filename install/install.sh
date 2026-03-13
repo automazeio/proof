@@ -69,15 +69,17 @@ if [ -z "$VERSION" ]; then
         | grep -i '^location:' \
         | awk '{print $2}')
     TAG=$(echo "$LATEST_URL" | sed 's|.*/tag/||')
-    VERSION=$(echo "$TAG" | sed 's|^v||')
-    if [ -z "$VERSION" ]; then
+    if [ -z "$TAG" ]; then
         echo -e "${CROSS} Failed to detect latest version"
         exit 1
     fi
+    VERSION=$(echo "$TAG" | sed 's|^v||')
+else
+    TAG="v${VERSION}"
 fi
 
 BINARY_NAME="proof-${OS}-${ARCH}"
-DOWNLOAD_URL="https://github.com/automazeio/proof/releases/download/v${VERSION}/${BINARY_NAME}"
+DOWNLOAD_URL="https://github.com/automazeio/proof/releases/download/${TAG}/${BINARY_NAME}"
 
 echo ""
 echo -e "${BOLD}proof${NC} installer"
