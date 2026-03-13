@@ -1,10 +1,10 @@
 # proof install script - Windows
 #
 # Usage:
-#   irm https://raw.githubusercontent.com/automazeio/proof/main/install.ps1 | iex
+#   irm https://getproof.sh/install | iex
 #
 # Options:
-#   $env:PROOF_VERSION = "0.20260312.1"; irm ... | iex
+#   $env:PROOF_VERSION = "0.20260312.1"; irm https://getproof.sh/install | iex
 
 param(
     [string]$Version,
