@@ -68,9 +68,16 @@ if [ -z "$VERSION" ]; then
         | tr -d '\r' \
         | grep -i '^location:' \
         | awk '{print $2}')
-    TAG=$(echo "$LATEST_URL" | sed 's|.*/tag/||')
+    case "$LATEST_URL" in
+        */tag/*)
+            TAG=$(echo "$LATEST_URL" | sed 's|.*/tag/||')
+            ;;
+        *)
+            TAG=""
+            ;;
+    esac
     if [ -z "$TAG" ]; then
-        printf "${CROSS} Failed to detect latest version\n"
+        printf "${CROSS} No releases found. Check https://github.com/automazeio/proof/releases\n"
         exit 1
     fi
     VERSION=$(echo "$TAG" | sed 's|^v||')
