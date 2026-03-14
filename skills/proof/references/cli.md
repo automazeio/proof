@@ -63,6 +63,8 @@ Generate a report from a previous run.
 
 ```bash
 proof report --app my-app --dir ./evidence --run deploy-v2
+proof report --app my-app --dir ./evidence --run deploy-v2 --format html
+proof report --app my-app --dir ./evidence --run deploy-v2 --format md,html,archive
 ```
 
 Output:
@@ -70,7 +72,7 @@ Output:
 ```json
 {
   "action": "report",
-  "path": "/abs/path/report.md"
+  "paths": ["/abs/path/report.md"]
 }
 ```
 
@@ -94,6 +96,7 @@ Print the installed version.
 | `--test-name <name>` | Specific test name filter (Playwright `-g`) | No |
 | `--label <label>` | Artifact filename prefix | No |
 | `--mode <mode>` | `browser`, `terminal`, or `auto` | No |
+| `--format <fmt>` | Report format: `md`, `html`, `archive` (comma-separated for multiple) | No |
 | `--description <text>` | Human-readable description stored in manifest | No |
 
 ## JSON stdin mode
@@ -168,7 +171,8 @@ For reports:
   "action": "report",
   "appName": "my-app",
   "proofDir": "./evidence",
-  "run": "deploy-v2"
+  "run": "deploy-v2",
+  "format": "html"
 }
 ```
 

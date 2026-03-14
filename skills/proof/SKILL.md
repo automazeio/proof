@@ -88,7 +88,9 @@ proof capture \
 ### Generate report
 
 ```bash
-proof report --app <app-name> --dir <output-dir> --run <run-name>
+proof report --app <app-name> --dir <output-dir> --run <run-name> --format md
+proof report --app <app-name> --dir <output-dir> --run <run-name> --format html
+proof report --app <app-name> --dir <output-dir> --run <run-name> --format md,html,archive
 ```
 
 ### JSON stdin mode (multi-capture)
@@ -256,7 +258,7 @@ echo '{
 ### Generate report for a PR
 
 ```bash
-proof report --app my-app --dir ./evidence --run full-suite
+proof report --app my-app --dir ./evidence --run full-suite --format md
 ```
 
 ## Key constraints
