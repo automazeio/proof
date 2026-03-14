@@ -180,14 +180,67 @@ describe("CLI", () => {
 
       const result = JSON.parse(stdout);
       expect(result.action).toBe("report");
-      expect(result.path).toContain("report.md");
-      expect(existsSync(result.path)).toBe(true);
+      expect(result.paths).toHaveLength(1);
+      expect(result.paths[0]).toContain("report.md");
+      expect(existsSync(result.paths[0])).toBe(true);
+    });
+
+    test("generates html report via JSON format field", async () => {
+      const captureInput = JSON.stringify({
+        action: "capture",
+        appName: "fmt-test",
+        proofDir: tempDir,
+        run: "f1",
+        command: "echo hi",
+        mode: "terminal",
+      });
+      await runCli(["--json"], captureInput);
+
+      const reportInput = JSON.stringify({
+        action: "report",
+        appName: "fmt-test",
+        proofDir: tempDir,
+        run: "f1",
+        format: "html",
+      });
+      const { stdout, exitCode } = await runCli(["--json"], reportInput);
+      expect(exitCode).toBe(0);
+
+      const result = JSON.parse(stdout);
+      expect(result.paths).toHaveLength(1);
+      expect(result.paths[0]).toContain("report.html");
+    });
+
+    test("generates multiple formats via JSON format array", async () => {
+      const captureInput = JSON.stringify({
+        action: "capture",
+        appName: "multi-fmt",
+        proofDir: tempDir,
+        run: "mf1",
+        command: "echo hi",
+        mode: "terminal",
+      });
+      await runCli(["--json"], captureInput);
+
+      const reportInput = JSON.stringify({
+        action: "report",
+        appName: "multi-fmt",
+        proofDir: tempDir,
+        run: "mf1",
+        format: ["md", "html"],
+      });
+      const { stdout, exitCode } = await runCli(["--json"], reportInput);
+      expect(exitCode).toBe(0);
+
+      const result = JSON.parse(stdout);
+      expect(result.paths).toHaveLength(2);
+      expect(result.paths[0]).toContain("report.md");
+      expect(result.paths[1]).toContain("report.html");
     });
   });
 
   describe("report (arg mode)", () => {
     test("generates report after capture", async () => {
-      // Capture first
       await runCli([
         "capture",
         "--app", "rpt-test",
@@ -197,7 +250,6 @@ describe("CLI", () => {
         "--mode", "terminal",
       ]);
 
-      // Generate report
       const { stdout, exitCode } = await runCli([
         "report",
         "--app", "rpt-test",
@@ -208,8 +260,58 @@ describe("CLI", () => {
 
       const result = JSON.parse(stdout);
       expect(result.action).toBe("report");
-      expect(result.path).toContain("report.md");
-      expect(existsSync(result.path)).toBe(true);
+      expect(result.paths).toHaveLength(1);
+      expect(result.paths[0]).toContain("report.md");
+      expect(existsSync(result.paths[0])).toBe(true);
+    });
+
+    test("generates html report with --format", async () => {
+      await runCli([
+        "capture",
+        "--app", "fmt-arg",
+        "--dir", tempDir,
+        "--run", "r1",
+        "--command", "echo hi",
+        "--mode", "terminal",
+      ]);
+
+      const { stdout, exitCode } = await runCli([
+        "report",
+        "--app", "fmt-arg",
+        "--dir", tempDir,
+        "--run", "r1",
+        "--format", "html",
+      ]);
+      expect(exitCode).toBe(0);
+
+      const result = JSON.parse(stdout);
+      expect(result.paths).toHaveLength(1);
+      expect(result.paths[0]).toContain("report.html");
+    });
+
+    test("generates multiple formats with comma-separated --format", async () => {
+      await runCli([
+        "capture",
+        "--app", "fmt-multi",
+        "--dir", tempDir,
+        "--run", "r1",
+        "--command", "echo hi",
+        "--mode", "terminal",
+      ]);
+
+      const { stdout, exitCode } = await runCli([
+        "report",
+        "--app", "fmt-multi",
+        "--dir", tempDir,
+        "--run", "r1",
+        "--format", "md,html",
+      ]);
+      expect(exitCode).toBe(0);
+
+      const result = JSON.parse(stdout);
+      expect(result.paths).toHaveLength(2);
+      expect(result.paths[0]).toContain("report.md");
+      expect(result.paths[1]).toContain("report.html");
     });
   });
 

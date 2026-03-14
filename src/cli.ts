@@ -17,6 +17,7 @@ interface CliInput {
   appName: string;
   proofDir?: string;
   run?: string;
+  format?: string | string[];
   browser?: { viewport?: { width: number; height: number } };
   terminal?: { cols?: number; rows?: number };
   captures?: CaptureArgs[];
@@ -90,6 +91,7 @@ async function main() {
       appName: parsed.appName,
       proofDir: parsed.proofDir,
       run: parsed.run,
+      format: parsed.format?.includes(",") ? parsed.format.split(",") : parsed.format,
     };
     await runFromConfig(config);
   }
@@ -105,8 +107,10 @@ async function runFromConfig(config: CliInput) {
   });
 
   if (config.action === "report") {
-    const reportPath = await proof.report();
-    const result = { action: "report", path: reportPath };
+    const formatOpt = config.format as any;
+    const reportResult = await proof.report(formatOpt ? { format: formatOpt } : undefined);
+    const paths = Array.isArray(reportResult) ? reportResult : [reportResult];
+    const result = { action: "report", paths };
     console.log(JSON.stringify(result));
     return;
   }
@@ -161,6 +165,7 @@ function parseArgs(args: string[]): Record<string, string | undefined> {
     "--test-name": "testName",
     "--label": "label",
     "--mode": "mode",
+    "--format": "format",
     "--description": "description",
   };
 
@@ -189,7 +194,7 @@ function printUsage() {
 Usage:
   proof capture --app <name> --command <cmd> [options]
   proof capture --app <name> --test-file <file> --mode browser [options]
-  proof report  --app <name> [options]
+  proof report  --app <name> [--format <fmt>] [options]
   proof --json  < config.json
 
 Options:
@@ -201,6 +206,7 @@ Options:
   --test-name <name>    Specific test name filter
   --label <label>       Artifact filename prefix
   --mode <mode>         browser | terminal | auto
+  --format <fmt>        Report format: md | html | archive (comma-separated for multiple)
   --description <text>  Human-readable description
 
 JSON mode:
