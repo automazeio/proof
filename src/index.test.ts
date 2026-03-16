@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { Proof } from "./index";
+import { Proof, type Recording } from "./index";
 import { join } from "path";
 import { mkdtemp, readFile, rm } from "fs/promises";
 import { tmpdir } from "os";
@@ -48,7 +48,7 @@ describe("Proof", () => {
         mode: "terminal",
         label: "cli",
         description: "CLI tests",
-      });
+      }) as Recording;
 
       expect(recording.mode).toBe("terminal");
       expect(recording.path).toEndWith(".html");
@@ -84,7 +84,7 @@ describe("Proof", () => {
         command: `bun test ${join(import.meta.dir, "../test-app/cli/app.test.ts")}`,
         mode: "terminal",
         label: "cli",
-      });
+      }) as Recording;
 
       const html = await readFile(recording.path, "utf-8");
       expect(html).toContain("<!DOCTYPE html>");
@@ -107,7 +107,7 @@ describe("Proof", () => {
         command: "echo hello && echo world",
         mode: "terminal",
         label: "echo",
-      });
+      }) as Recording;
 
       expect(recording.mode).toBe("terminal");
       const castContent = await readFile(recording.path.replace(".html", ".cast"), "utf-8");
