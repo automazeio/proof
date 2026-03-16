@@ -5,6 +5,7 @@ import { existsSync } from "fs";
 import { detectMode } from "./detect";
 import { captureVisual } from "./modes/visual";
 import { captureTerminal } from "./modes/terminal";
+import { captureSimulator } from "./modes/simulator";
 import { generateReport } from "./report";
 import type {
   ProofConfig,
@@ -169,12 +170,27 @@ export class Proof {
         );
         break;
       }
+      case "simulator": {
+        if (!options.command) {
+          throw new Error("simulator mode requires command");
+        }
+        if (!options.platform) {
+          throw new Error("simulator mode requires platform (ios or android)");
+        }
+        recording = await captureSimulator(
+          options as CaptureOptions & { command: string },
+          runDir,
+          filePrefix,
+        );
+        break;
+      }
     }
 
     const source = options.testFile ? basename(options.testFile) : options.command ?? mode;
     const fallbackDescriptions: Record<Exclude<RecordingMode, "auto">, string> = {
       browser: `Playwright browser test recording of ${source}${options.testName ? ` — test: "${options.testName}"` : ""}`,
       terminal: `Terminal capture: ${source}`,
+      simulator: `Simulator recording (${options.platform ?? "ios"}): ${source}`,
     };
 
     const entry: ProofEntry = {
@@ -189,6 +205,7 @@ export class Proof {
       description: options.description ?? fallbackDescriptions[mode],
       device: singleDevice,
       viewport: singleViewport,
+      platform: options.platform,
     };
 
     await this.appendToManifest(entry);

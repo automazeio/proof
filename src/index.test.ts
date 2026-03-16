@@ -221,6 +221,44 @@ describe("Proof", () => {
     });
   });
 
+  describe("capture (simulator mode)", () => {
+    test("throws if command is missing", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      expect(
+        proof.capture({ mode: "simulator", platform: "ios", label: "fail" })
+      ).rejects.toThrow("simulator mode requires command");
+    });
+
+    test("throws if platform is missing", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      expect(
+        proof.capture({ mode: "simulator", command: "echo hi", label: "fail" })
+      ).rejects.toThrow("simulator mode requires platform");
+    });
+
+    test("throws for android (not yet implemented)", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      expect(
+        proof.capture({ mode: "simulator", platform: "android", command: "echo hi", label: "fail" })
+      ).rejects.toThrow("Android simulator capture is not yet implemented");
+    });
+  });
+
   describe("manifest", () => {
     test("creates proof.json with entries on capture", async () => {
       const proof = new Proof({

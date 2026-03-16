@@ -8,10 +8,19 @@ interface CaptureArgs {
   testFile?: string;
   testName?: string;
   label?: string;
-  mode?: "browser" | "terminal" | "auto";
+  mode?: "browser" | "terminal" | "simulator" | "auto";
   description?: string;
   device?: string | string[];
   viewport?: string | string[];
+  platform?: "ios" | "android";
+  simulator?: {
+    deviceName?: string;
+    deviceId?: string;
+    os?: string;
+    codec?: string;
+    bitRate?: number;
+    size?: string;
+  };
 }
 
 interface CliInput {
@@ -28,10 +37,19 @@ interface CliInput {
   testFile?: string;
   testName?: string;
   label?: string;
-  mode?: "browser" | "terminal" | "auto";
+  mode?: "browser" | "terminal" | "simulator" | "auto";
   description?: string;
   device?: string | string[];
   viewport?: string | string[];
+  platform?: "ios" | "android";
+  simulator?: {
+    deviceName?: string;
+    deviceId?: string;
+    os?: string;
+    codec?: string;
+    bitRate?: number;
+    size?: string;
+  };
 }
 
 async function main() {
@@ -76,6 +94,10 @@ async function main() {
       process.exit(1);
     }
 
+    const simulatorOpts = parsed.deviceName || parsed.os || parsed.codec
+      ? { deviceName: parsed.deviceName, os: parsed.os, codec: parsed.codec }
+      : undefined;
+
     const config: CliInput = {
       action: "capture",
       appName: parsed.appName,
@@ -85,10 +107,12 @@ async function main() {
       testFile: parsed.testFile,
       testName: parsed.testName,
       label: parsed.label,
-      mode: parsed.mode as "browser" | "terminal" | "auto" | undefined,
+      mode: parsed.mode as "browser" | "terminal" | "simulator" | "auto" | undefined,
       description: parsed.description,
       device: parsed.device?.includes(",") ? parsed.device.split(",") : parsed.device,
       viewport: parsed.viewport?.includes(",") ? parsed.viewport.split(",") : parsed.viewport,
+      platform: parsed.platform as "ios" | "android" | undefined,
+      simulator: simulatorOpts,
     };
     await runFromConfig(config);
   } else {
@@ -132,6 +156,8 @@ async function runFromConfig(config: CliInput) {
       description: config.description,
       device: config.device,
       viewport: config.viewport,
+      platform: config.platform,
+      simulator: config.simulator,
     },
   ];
 
@@ -146,6 +172,8 @@ async function runFromConfig(config: CliInput) {
       description: cap.description,
       device: cap.device,
       viewport: cap.viewport,
+      platform: cap.platform,
+      simulator: cap.simulator,
     });
     const recordings = Array.isArray(result) ? result : [result];
     for (const recording of recordings) {
@@ -181,6 +209,10 @@ function parseArgs(args: string[]): Record<string, string | undefined> {
     "--format": "format",
     "--device": "device",
     "--viewport": "viewport",
+    "--platform": "platform",
+    "--device-name": "deviceName",
+    "--os": "os",
+    "--codec": "codec",
     "--description": "description",
   };
 
@@ -209,6 +241,7 @@ function printUsage() {
 Usage:
   proof capture --app <name> --command <cmd> [options]
   proof capture --app <name> --test-file <file> --mode browser [options]
+  proof capture --app <name> --command <cmd> --mode simulator --platform ios [options]
   proof report  --app <name> [--format <fmt>] [options]
   proof --json  < config.json
 
@@ -216,13 +249,17 @@ Options:
   --app <name>          App name (required)
   --dir <path>          Proof directory (default: $TMPDIR/proof)
   --run <name>          Run name (default: HHMM)
-  --command <cmd>       Command to run (required for terminal mode)
+  --command <cmd>       Command to run (required for terminal/simulator mode)
   --test-file <file>    Playwright test file (required for browser mode)
   --test-name <name>    Specific test name filter
   --label <label>       Artifact filename prefix
-  --mode <mode>         browser | terminal | auto
+  --mode <mode>         browser | terminal | simulator | auto
   --device <name>       Playwright device (e.g. "iPhone 14", comma-separated for multiple)
   --viewport <WxH>      Custom viewport (e.g. "390x844", comma-separated for multiple)
+  --platform <p>        Simulator platform: ios | android
+  --device-name <name>  iOS Simulator name (e.g. "iPhone 17 Pro")
+  --os <version>        iOS version filter (e.g. "26.3")
+  --codec <codec>       iOS video codec (default: h264)
   --format <fmt>        Report format: md | html | archive (comma-separated for multiple)
   --description <text>  Human-readable description
 
