@@ -2,7 +2,7 @@
 
 ## Overview
 
-A TypeScript capture SDK and CLI that records visual evidence of test execution. Two modes: **browser** (Playwright video with cursor highlights) and **terminal** (asciicast recording with self-contained HTML player). No opinions on workflow -- just captures proof that something happened. Consumers are expected to be tools, agents, CI scripts, or non-JS SDKs that call the CLI.
+A capture SDK and CLI that records visual evidence of test execution. Two modes: **browser** (Playwright video with device emulation and cursor highlights) and **terminal** (asciicast recording with self-contained HTML player). No opinions on workflow -- just captures proof that something happened. Ships as a standalone binary with TypeScript, Python, and Go SDKs. Consumers are expected to be tools, agents, CI scripts, or non-JS SDKs that call the CLI.
 
 ## Architecture
 
@@ -69,11 +69,14 @@ proofDir/appName/yyyymmdd/run/
 
 ### Browser capture
 1. Run `npx playwright test` with `--output` flag pointing to `runDir/pw-results`
-2. Find `.webm` or `.mp4` in results directory (recursive search)
-3. Copy video to run directory as `label-HHmmss.webm`
-4. Clean up `pw-results` temp directory
-5. Get duration via ffprobe
-6. Append entry to proof.json
+2. If `device` is set, pass `--use '{"deviceName":"iPhone 14"}'` to Playwright for device emulation (viewport + UA + touch)
+3. If `viewport` is set, pass `--use '{"viewport":{"width":390,"height":844}}'` for custom size
+4. If `device`/`viewport` is an array, fan out into sequential captures (one per entry), return `Recording[]`
+5. Find `.webm` or `.mp4` in results directory (recursive search)
+6. Copy video to run directory as `label-HHmmss.webm`
+7. Clean up `pw-results` temp directory
+8. Get duration via ffprobe
+9. Append entry to proof.json (with `device`/`viewport` fields if set)
 
 ### Mode detection (auto)
 1. Check for `playwright.config.{ts,js,mjs}` in cwd -> browser
@@ -121,6 +124,8 @@ No other runtime dependencies. Terminal capture uses only Node/Bun built-ins. AN
 - **`addInitScript` timing** -- must be called before `page.goto()`. The script itself wraps in `DOMContentLoaded` because the DOM isn't ready when init scripts execute.
 - **Terminal command is caller-provided** -- `capture()` requires `command` for terminal mode. The SDK doesn't know or care what test runner you use.
 - **Browser mode requires `testFile`** -- the SDK controls the Playwright invocation (video output dir, reporter, config path).
+- **`device` and `viewport` are mutually exclusive** -- can't set both on the same capture call.
+- **Array device/viewport fans out** -- `capture()` returns `Recording[]` when given an array. Labels are auto-suffixed (e.g. `checkout-iphone-14`, `checkout-390x844`).
 - **`bun.lock` changes** -- bun regenerates the lockfile format on dependency changes; the diff can be noisy.
 
 ## Lessons Learned

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.20260316.0
+
+- **feat**: Add `--device` option for Playwright device emulation — pass any Playwright device name (e.g. `"iPhone 14"`, `"iPad Pro 11"`) to capture with that device's viewport, user-agent, and touch emulation.
+- **feat**: Add `--viewport` option for custom viewport sizes — pass `WIDTHxHEIGHT` (e.g. `"390x844"`) to capture at a specific size without full device emulation.
+- **feat**: Both `--device` and `--viewport` accept comma-separated values (CLI) or arrays (SDK/JSON) to capture the same test across multiple devices or viewports in one call.
+- **docs**: Updated README, mental model, and agent skill with device/viewport examples.
+
 ## 0.20260314.0
 
 - **feat**: Add `--format` option to CLI report command — supports `md`, `html`, `archive` (comma-separated for multiple). Works in both arg mode (`--format html`) and JSON stdin mode (`"format": "html"` or `"format": ["md", "html"]`). Report output changed from `{path}` to `{paths: [...]}` for consistency.

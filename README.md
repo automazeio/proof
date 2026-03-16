@@ -131,7 +131,46 @@ await proof.capture({
 
 Requires `video: 'on'` in your `playwright.config.ts`.
 
-**Cursor highlights** -- optional. Adds a visible red cursor dot and click ripple to recordings:
+### Device emulation
+
+Capture with Playwright's built-in device descriptors (viewport, user-agent, touch emulation):
+
+```typescript
+// Single device
+await proof.capture({
+  testFile: "tests/checkout.spec.ts",
+  mode: "browser",
+  device: "iPhone 14",
+  label: "checkout-mobile",
+});
+
+// Multiple devices in one call
+await proof.capture({
+  testFile: "tests/checkout.spec.ts",
+  mode: "browser",
+  device: ["iPhone 14", "iPad Pro 11", "Desktop Chrome"],
+  label: "checkout",
+});
+```
+
+### Custom viewports
+
+Capture at specific viewport sizes without full device emulation:
+
+```typescript
+await proof.capture({
+  testFile: "tests/checkout.spec.ts",
+  mode: "browser",
+  viewport: ["390x844", "834x1194", "1440x900"],
+  label: "checkout",
+});
+```
+
+`device` and `viewport` are mutually exclusive. When passing an array, proof runs the test once per entry and produces separate recordings for each.
+
+### Cursor highlights
+
+Optional. Adds a visible red cursor dot and click ripple to recordings:
 
 ```typescript
 import { getCursorHighlightScript } from "@automaze/proof";
@@ -153,8 +192,14 @@ proof capture --app my-app --command "pytest tests/" --mode terminal --label tes
 # Capture a Playwright test
 proof capture --app my-app --test-file tests/checkout.spec.ts --mode browser
 
+# Capture with device emulation
+proof capture --app my-app --test-file tests/checkout.spec.ts --mode browser --device "iPhone 14"
+
+# Capture at multiple viewports
+proof capture --app my-app --test-file tests/checkout.spec.ts --mode browser --viewport "390x844,1440x900"
+
 # Generate report
-proof report --app my-app
+proof report --app my-app --format html
 ```
 
 For automation, pipe JSON to stdin for multi-capture runs:
@@ -201,12 +246,16 @@ const recording = await proof.capture({
   label: "order-flow",               // Optional: filename prefix
   mode: "terminal",                  // "browser" | "terminal" | "auto"
   description: "Order flow tests",   // Optional: stored in manifest
+  device: "iPhone 14",               // Optional: Playwright device (string or string[])
+  viewport: "390x844",               // Optional: custom viewport (string or string[])
 });
 
 recording.path      // absolute path to artifact
 recording.mode      // "browser" | "terminal"
 recording.duration  // ms
 ```
+
+When `device` or `viewport` is an array, `capture()` returns `Recording[]` instead of a single `Recording`.
 
 ### `proof.report()`
 
