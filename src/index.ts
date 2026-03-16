@@ -96,12 +96,46 @@ export class Proof {
     await writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");
   }
 
-  async capture(options: CaptureOptions): Promise<Recording> {
+  async capture(options: CaptureOptions): Promise<Recording | Recording[]> {
+    if (options.device && options.viewport) {
+      throw new Error("device and viewport are mutually exclusive — use one or the other");
+    }
+
+    // Fan out arrays into multiple sequential captures
+    const devices = options.device ? (Array.isArray(options.device) ? options.device : [options.device]) : undefined;
+    const viewports = options.viewport ? (Array.isArray(options.viewport) ? options.viewport : [options.viewport]) : undefined;
+
+    if (devices && devices.length > 1) {
+      const results: Recording[] = [];
+      for (const device of devices) {
+        const r = await this.captureSingle({ ...options, device, label: `${options.label ?? "browser"}-${slugify(device)}` });
+        results.push(r);
+      }
+      return results;
+    }
+
+    if (viewports && viewports.length > 1) {
+      const results: Recording[] = [];
+      for (const vp of viewports) {
+        const r = await this.captureSingle({ ...options, viewport: vp, label: `${options.label ?? "browser"}-${vp.replace("x", "x")}` });
+        results.push(r);
+      }
+      return results;
+    }
+
+    return this.captureSingle(options);
+  }
+
+  private async captureSingle(options: CaptureOptions): Promise<Recording> {
     const runDir = await this.ensureRunDir();
     const mode = await this.resolveMode(options.mode);
     const ts = this.formatTimestamp(new Date());
     const label = options.label ?? mode;
     const filePrefix = `${label}-${ts}`;
+
+    // Resolve single device/viewport strings for browser mode
+    const singleDevice = typeof options.device === "string" ? options.device : undefined;
+    const singleViewport = typeof options.viewport === "string" ? options.viewport : undefined;
 
     let recording: Recording;
     switch (mode) {
@@ -109,9 +143,17 @@ export class Proof {
         if (!options.testFile) {
           throw new Error("browser mode requires testFile");
         }
-        recording = await captureVisual(options as CaptureOptions & { testFile: string }, runDir, filePrefix, {
-          viewport: this.config.browser?.viewport,
-        });
+
+        const visualConfig: { viewport?: { width: number; height: number }; device?: string } = {};
+        if (singleDevice) {
+          visualConfig.device = singleDevice;
+        } else if (singleViewport) {
+          visualConfig.viewport = parseViewport(singleViewport);
+        } else if (this.config.browser?.viewport) {
+          visualConfig.viewport = this.config.browser.viewport;
+        }
+
+        recording = await captureVisual(options as CaptureOptions & { testFile: string }, runDir, filePrefix, visualConfig);
         break;
       }
       case "terminal": {
@@ -145,6 +187,8 @@ export class Proof {
       duration: recording.duration,
       artifact: basename(recording.path),
       description: options.description ?? fallbackDescriptions[mode],
+      device: singleDevice,
+      viewport: singleViewport,
     };
 
     await this.appendToManifest(entry);
@@ -169,4 +213,16 @@ export class Proof {
 
     return Array.isArray(formatInput) ? paths : paths[0];
   }
+}
+
+function parseViewport(vp: string): { width: number; height: number } {
+  const match = vp.match(/^(\d+)x(\d+)$/);
+  if (!match) {
+    throw new Error(`Invalid viewport format "${vp}" — expected "WIDTHxHEIGHT" (e.g. "390x844")`);
+  }
+  return { width: parseInt(match[1], 10), height: parseInt(match[2], 10) };
+}
+
+function slugify(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }

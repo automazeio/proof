@@ -28,6 +28,8 @@ export interface CaptureOptions {
   label?: string;
   mode?: RecordingMode;
   description?: string;
+  device?: string | string[];
+  viewport?: string | string[];
 }
 
 export interface ProofEntry {
@@ -40,6 +42,8 @@ export interface ProofEntry {
   duration: number;
   artifact: string;
   description: string;
+  device?: string;
+  viewport?: string;
 }
 
 export interface ProofManifest {

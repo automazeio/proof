@@ -315,6 +315,98 @@ describe("CLI", () => {
     });
   });
 
+  describe("device and viewport", () => {
+    test("--viewport passes through to capture via args", async () => {
+      const { stdout, exitCode } = await runCli([
+        "capture",
+        "--app", "vp-test",
+        "--dir", tempDir,
+        "--run", "v1",
+        "--command", "echo viewport-test",
+        "--mode", "terminal",
+        "--label", "vp",
+        "--viewport", "800x600",
+      ]);
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(stdout);
+      expect(result.recordings).toHaveLength(1);
+      expect(result.recordings[0].label).toBe("vp");
+    });
+
+    test("--device passes through to capture via args", async () => {
+      const { stdout, exitCode } = await runCli([
+        "capture",
+        "--app", "dev-test",
+        "--dir", tempDir,
+        "--run", "d1",
+        "--command", "echo device-test",
+        "--mode", "terminal",
+        "--label", "dev",
+        "--device", "iPhone 14",
+      ]);
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(stdout);
+      expect(result.recordings).toHaveLength(1);
+      expect(result.recordings[0].label).toBe("dev");
+    });
+
+    test("comma-separated --viewport produces multiple recordings", async () => {
+      const { stdout, exitCode } = await runCli([
+        "capture",
+        "--app", "multi-vp",
+        "--dir", tempDir,
+        "--run", "mv1",
+        "--command", "echo multi",
+        "--mode", "terminal",
+        "--label", "test",
+        "--viewport", "800x600,1024x768",
+      ]);
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(stdout);
+      expect(result.recordings).toHaveLength(2);
+      expect(result.recordings[0].label).toBe("test-800x600");
+      expect(result.recordings[1].label).toBe("test-1024x768");
+    });
+
+    test("JSON mode with device array produces multiple recordings", async () => {
+      const input = JSON.stringify({
+        action: "capture",
+        appName: "json-dev",
+        proofDir: tempDir,
+        run: "jd1",
+        command: "echo json-device",
+        mode: "terminal",
+        label: "test",
+        device: ["iPhone 14", "iPad Pro 11"],
+      });
+      const { stdout, exitCode } = await runCli(["--json"], input);
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(stdout);
+      expect(result.recordings).toHaveLength(2);
+      expect(result.recordings[0].label).toBe("test-iphone-14");
+      expect(result.recordings[1].label).toBe("test-ipad-pro-11");
+    });
+
+    test("JSON mode with viewport array produces multiple recordings", async () => {
+      const input = JSON.stringify({
+        action: "capture",
+        appName: "json-vp",
+        proofDir: tempDir,
+        run: "jv1",
+        command: "echo json-viewport",
+        mode: "terminal",
+        label: "test",
+        viewport: ["390x844", "1440x900"],
+      });
+      const { stdout, exitCode } = await runCli(["--json"], input);
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(stdout);
+      expect(result.recordings).toHaveLength(2);
+      expect(result.recordings[0].label).toBe("test-390x844");
+      expect(result.recordings[1].label).toBe("test-1440x900");
+    });
+  });
+
   describe("error handling", () => {
     test("outputs JSON error on failure", async () => {
       const input = JSON.stringify({

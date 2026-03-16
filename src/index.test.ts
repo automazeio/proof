@@ -140,6 +140,85 @@ describe("Proof", () => {
         proof.capture({ mode: "browser", label: "fail" })
       ).rejects.toThrow("browser mode requires testFile");
     });
+
+    test("throws if device and viewport are both set", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      expect(
+        proof.capture({
+          mode: "browser",
+          testFile: "test.spec.ts",
+          device: "iPhone 14",
+          viewport: "390x844",
+        })
+      ).rejects.toThrow("mutually exclusive");
+    });
+  });
+
+  describe("capture (device/viewport)", () => {
+    test("device array produces multiple recordings", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      // Terminal mode with multiple viewports to test fan-out without Playwright
+      const result = await proof.capture({
+        command: "echo hi",
+        mode: "terminal",
+        label: "multi",
+        viewport: ["80x24", "120x30"],
+      });
+
+      // Should return array since we passed array viewport
+      expect(Array.isArray(result)).toBe(true);
+      const recordings = result as any[];
+      expect(recordings).toHaveLength(2);
+      expect(recordings[0].label).toBe("multi-80x24");
+      expect(recordings[1].label).toBe("multi-120x30");
+    });
+
+    test("single device string returns single recording", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      const result = await proof.capture({
+        command: "echo hi",
+        mode: "terminal",
+        label: "single",
+      });
+
+      expect(Array.isArray(result)).toBe(false);
+    });
+
+    test("device and viewport entries are recorded in manifest", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      await proof.capture({
+        command: "echo test",
+        mode: "terminal",
+        label: "vp-test",
+        viewport: "800x600",
+      });
+
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
+      const manifestPath = join(tempDir, "test-app", dateStr, "test-run", "proof.json");
+      const manifest = JSON.parse(await readFile(manifestPath, "utf-8"));
+      expect(manifest.entries[0].viewport).toBe("800x600");
+    });
   });
 
   describe("manifest", () => {

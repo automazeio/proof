@@ -81,11 +81,16 @@ const CURSOR_HIGHLIGHT_SCRIPT = `
   })();
 `;
 
+export interface VisualCaptureConfig {
+  viewport?: { width: number; height: number };
+  device?: string;
+}
+
 export async function captureVisual(
   options: CaptureOptions & { testFile: string },
   runDir: string,
   filePrefix: string,
-  config: { viewport?: { width: number; height: number } },
+  config: VisualCaptureConfig,
 ): Promise<Recording> {
   const label = options.label ?? "recording";
   const testFile = options.testFile;
@@ -111,6 +116,13 @@ export async function captureVisual(
   }
   if (existingConfig) {
     testArgs.push("--config", existingConfig);
+  }
+
+  // Pass device or viewport via --use
+  if (config.device) {
+    testArgs.push("--use", JSON.stringify({ deviceName: config.device }));
+  } else if (config.viewport) {
+    testArgs.push("--use", JSON.stringify({ viewport: config.viewport }));
   }
 
   const env: Record<string, string> = {

@@ -10,6 +10,8 @@ interface CaptureArgs {
   label?: string;
   mode?: "browser" | "terminal" | "auto";
   description?: string;
+  device?: string | string[];
+  viewport?: string | string[];
 }
 
 interface CliInput {
@@ -28,6 +30,8 @@ interface CliInput {
   label?: string;
   mode?: "browser" | "terminal" | "auto";
   description?: string;
+  device?: string | string[];
+  viewport?: string | string[];
 }
 
 async function main() {
@@ -83,6 +87,8 @@ async function main() {
       label: parsed.label,
       mode: parsed.mode as "browser" | "terminal" | "auto" | undefined,
       description: parsed.description,
+      device: parsed.device?.includes(",") ? parsed.device.split(",") : parsed.device,
+      viewport: parsed.viewport?.includes(",") ? parsed.viewport.split(",") : parsed.viewport,
     };
     await runFromConfig(config);
   } else {
@@ -124,25 +130,32 @@ async function runFromConfig(config: CliInput) {
       label: config.label,
       mode: config.mode,
       description: config.description,
+      device: config.device,
+      viewport: config.viewport,
     },
   ];
 
   const results = [];
   for (const cap of captures) {
-    const recording = await proof.capture({
+    const result = await proof.capture({
       command: cap.command,
       testFile: cap.testFile,
       testName: cap.testName,
       label: cap.label,
       mode: cap.mode,
       description: cap.description,
+      device: cap.device,
+      viewport: cap.viewport,
     });
-    results.push({
-      path: recording.path,
-      mode: recording.mode,
-      duration: recording.duration,
-      label: recording.label,
-    });
+    const recordings = Array.isArray(result) ? result : [result];
+    for (const recording of recordings) {
+      results.push({
+        path: recording.path,
+        mode: recording.mode,
+        duration: recording.duration,
+        label: recording.label,
+      });
+    }
   }
 
   const output = {
@@ -166,6 +179,8 @@ function parseArgs(args: string[]): Record<string, string | undefined> {
     "--label": "label",
     "--mode": "mode",
     "--format": "format",
+    "--device": "device",
+    "--viewport": "viewport",
     "--description": "description",
   };
 
@@ -206,6 +221,8 @@ Options:
   --test-name <name>    Specific test name filter
   --label <label>       Artifact filename prefix
   --mode <mode>         browser | terminal | auto
+  --device <name>       Playwright device (e.g. "iPhone 14", comma-separated for multiple)
+  --viewport <WxH>      Custom viewport (e.g. "390x844", comma-separated for multiple)
   --format <fmt>        Report format: md | html | archive (comma-separated for multiple)
   --description <text>  Human-readable description
 
