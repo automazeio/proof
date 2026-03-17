@@ -221,6 +221,50 @@ describe("Proof", () => {
     });
   });
 
+  describe("capture (simulator mode)", () => {
+    test("throws if command is missing", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      expect(
+        proof.capture({ mode: "simulator", platform: "ios", label: "fail" })
+      ).rejects.toThrow("simulator mode requires command");
+    });
+
+    test("throws if platform is missing", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+
+      expect(
+        proof.capture({ mode: "simulator", command: "echo hi", label: "fail" })
+      ).rejects.toThrow("simulator mode requires platform");
+    });
+
+    test("android: enters android code path (fails on missing device, not stub)", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+      // Use a fake deviceId to skip emulator boot and fail fast on adb pull.
+      // Verifies the Android code path exists (no longer a stub).
+      const capture = proof.capture({
+        mode: "simulator",
+        platform: "android",
+        command: "echo hi",
+        label: "fail",
+        simulator: { deviceId: "emulator-9999" },
+      });
+      await expect(capture).rejects.not.toThrow("Android simulator capture is not yet implemented");
+    });
+  });
+
   describe("manifest", () => {
     test("creates proof.json with entries on capture", async () => {
       const proof = new Proof({

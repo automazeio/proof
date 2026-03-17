@@ -1,4 +1,4 @@
-export type RecordingMode = "browser" | "terminal" | "auto";
+export type RecordingMode = "browser" | "terminal" | "simulator" | "auto";
 
 export interface ProofConfig {
   appName: string;
@@ -30,6 +30,15 @@ export interface CaptureOptions {
   description?: string;
   device?: string | string[];
   viewport?: string | string[];
+  platform?: "ios" | "android";
+  simulator?: {
+    deviceName?: string;
+    deviceId?: string;
+    os?: string;
+    codec?: string;
+    bitRate?: number;
+    size?: string;
+  };
 }
 
 export interface ProofEntry {
@@ -44,6 +53,7 @@ export interface ProofEntry {
   description: string;
   device?: string;
   viewport?: string;
+  platform?: "ios" | "android";
 }
 
 export interface ProofManifest {

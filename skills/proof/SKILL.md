@@ -7,13 +7,15 @@ description: >
   standalone binary, TypeScript, Python, or Go SDKs. Key use cases: attaching terminal
   output to a PR so reviewers can replay the test session instead of trusting a screenshot;
   generating a markdown proof report to embed in PR descriptions or tickets; recording a
-  browser test run as a self-contained HTML video to share with a PM or QA team; or creating
-  an audit trail that ties passing tests to a specific git commit. Trigger on phrases like
-  "attach evidence to PR", "save test output as artifact", "replayable test recording",
-  "proof report", "record my test run", "share test results", "visual proof tests pass",
-  "terminal recording of tests", or whenever someone wants reviewers or stakeholders to
-  see test execution without re-running it themselves. Also trigger when the user mentions
-  proof, @automaze/proof, or automaze-proof directly.
+  browser test run as a self-contained HTML video to share with a PM or QA team; recording
+  an iOS Simulator or Android emulator screen while XCUITest or Espresso tests run, with
+  automatic tap indicator overlays; or creating an audit trail that ties passing tests to a
+  specific git commit. Trigger on phrases like "attach evidence to PR", "save test output
+  as artifact", "replayable test recording", "proof report", "record my test run", "share
+  test results", "visual proof tests pass", "terminal recording of tests", "record iOS
+  simulator", "record Android emulator", "capture mobile tests", or whenever someone wants
+  reviewers or stakeholders to see test execution without re-running it themselves. Also
+  trigger when the user mentions proof, @automaze/proof, or automaze-proof directly.
 ---
 
 # proof
@@ -26,6 +28,7 @@ Capture evidence that code works. Terminal replays, browser videos, structured r
 - User wants visual evidence of a command running
 - User needs to generate a proof report
 - User wants to attach test recordings to PRs or share them
+- User wants to record an iOS Simulator or Android emulator while running mobile UI tests
 - User mentions "proof", "evidence", or "capture" in the context of testing
 
 ## Install
@@ -84,6 +87,56 @@ proof capture \
   --label <label> \
   --dir <output-dir>
 ```
+
+### Simulator capture (iOS)
+
+Records the iOS Simulator screen while running XCUITest (or any command). Requires Xcode and at least one simulator runtime installed locally.
+
+```bash
+proof capture \
+  --app <app-name> \
+  --mode simulator \
+  --platform ios \
+  --device-name "iPhone 17 Pro" \
+  --command "xcodebuild test \
+    -project MyApp.xcodeproj \
+    -scheme MyApp \
+    -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+    -parallel-testing-enabled NO \
+    -disable-concurrent-destination-testing" \
+  --label ui-tests \
+  --dir <output-dir>
+```
+
+For pixel-accurate tap indicators, add `ProofTapLogger.swift` to the XCUITest target and replace `element.tap()` with `element.proofTap()`. Proof reads the tap log after the test and overlays red dot + ripple rings at the correct positions.
+
+### Simulator capture (Android)
+
+Records the Android emulator screen while running Espresso or any command. Requires Android SDK and at least one AVD created locally.
+
+```bash
+proof capture \
+  --app <app-name> \
+  --mode simulator \
+  --platform android \
+  --device-name "Pixel_3a" \
+  --command "./gradlew connectedAndroidTest" \
+  --label ui-tests \
+  --dir <output-dir>
+```
+
+For tap indicators, write a JSON tap log from your test script:
+
+```bash
+cat > /tmp/proof-android-taps.json << 'EOF'
+[
+  { "element": "Login", "x": 540, "y": 1200, "offsetMs": 1000 },
+  { "element": "Submit", "x": 540, "y": 1800, "offsetMs": 3500 }
+]
+EOF
+```
+
+Proof reads `$PROOF_TAP_LOG` (default `/tmp/proof-android-taps.json`) after recording and overlays indicators.
 
 ### Generate report
 
@@ -265,9 +318,12 @@ proof report --app my-app --dir ./evidence --run full-suite --format md
 
 - Terminal mode requires `--command`
 - Browser mode requires `--test-file`
+- Simulator mode requires `--command` and `--platform`
 - `--app` is always required
 - CLI always outputs JSON to stdout, errors go to stderr
 - Report generation requires at least one capture in the run
+- Simulator mode requires the simulator/emulator to be installed locally -- proof does not download or provision them
+- For iOS xcodebuild tests, always pass `-parallel-testing-enabled NO -disable-concurrent-destination-testing` or the recording will capture an idle screen (xcodebuild clones the simulator by default)
 
 ## References
 

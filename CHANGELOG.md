@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.20260317.0
+
+- **feat**: iOS Simulator capture mode -- `--mode simulator --platform ios` records the simulator screen via `xcrun simctl io recordVideo` while running any command (typically `xcodebuild test`).
+- **feat**: Android emulator capture mode -- `--mode simulator --platform android` records the emulator via `adb emu screenrecord` while running any command. Uses the QEMU monitor protocol to capture from the virtual framebuffer, which works on Apple Silicon where `adb shell screenrecord` produces 0 frames.
+- **feat**: Tap indicator overlays for iOS -- `ProofTapLogger.swift` is a drop-in XCUITest extension. Replace `element.tap()` with `element.proofTap()` and proof reads the logged coordinates to overlay pixel-accurate red dot + ripple ring indicators via ffmpeg post-processing.
+- **feat**: Tap indicator overlays for Android -- write `[{element, x, y, offsetMs}]` to `$PROOF_TAP_LOG` (default `/tmp/proof-android-taps.json`) from your test script and proof overlays indicators at the correct positions.
+- **fix**: Warn when `xcodebuild test` is used without `-parallel-testing-enabled NO -disable-concurrent-destination-testing` -- xcodebuild clones the simulator by default, which causes the recording to capture an idle screen instead of the active clone.
+- **fix**: Exclude test files from `tsc` compilation -- `dist/*.test.js` files were landing in dist and failing with a missing `cli.ts` reference. Test files are now compiled only by `bun test` at runtime.
+- **fix**: Scope `bun test` to `src/` and `test-app/cli/` -- prevents Playwright `.spec.ts` files from being picked up by bun's test runner.
+
 ## 0.20260316.0
 
 - **feat**: Add `--device` option for Playwright device emulation — pass any Playwright device name (e.g. `"iPhone 14"`, `"iPad Pro 11"`) to capture with that device's viewport, user-agent, and touch emulation.

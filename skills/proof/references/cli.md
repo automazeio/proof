@@ -19,7 +19,7 @@ npm install -g @automaze/proof
 
 ### `proof capture`
 
-Record a terminal command or Playwright test.
+Record a terminal command, Playwright test, or mobile simulator.
 
 ```bash
 # Terminal capture
@@ -27,6 +27,17 @@ proof capture --app my-app --command "pytest tests/ -v" --mode terminal
 
 # Browser capture
 proof capture --app my-app --test-file tests/checkout.spec.ts --mode browser
+
+# iOS Simulator capture
+proof capture --app my-app --mode simulator --platform ios \
+  --device-name "iPhone 17 Pro" \
+  --command "xcodebuild test -project MyApp.xcodeproj -scheme MyApp \
+    -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+    -parallel-testing-enabled NO -disable-concurrent-destination-testing"
+
+# Android emulator capture
+proof capture --app my-app --mode simulator --platform android \
+  --command "./gradlew connectedAndroidTest"
 
 # With all options
 proof capture \
@@ -91,11 +102,15 @@ Print the installed version.
 | `--app <name>` | App name. Used in directory paths and manifest. | Yes |
 | `--dir <path>` | Proof directory. Default: `$TMPDIR/proof` | No |
 | `--run <name>` | Run name. Default: HHMM of current time | No |
-| `--command <cmd>` | Shell command to run | Yes (terminal mode) |
+| `--command <cmd>` | Shell command to run | Yes (terminal / simulator mode) |
 | `--test-file <file>` | Playwright test file path | Yes (browser mode) |
 | `--test-name <name>` | Specific test name filter (Playwright `-g`) | No |
 | `--label <label>` | Artifact filename prefix | No |
-| `--mode <mode>` | `browser`, `terminal`, or `auto` | No |
+| `--mode <mode>` | `browser`, `terminal`, `simulator`, or `auto` | No |
+| `--platform <p>` | `ios` or `android` | Yes (simulator mode) |
+| `--device-name <n>` | Simulator/AVD name to boot (uses running device if omitted) | No |
+| `--os <version>` | iOS version filter, e.g. `18.4` | No |
+| `--codec <codec>` | iOS recording codec: `h264` (default) or `hevc` | No |
 | `--format <fmt>` | Report format: `md`, `html`, `archive` (comma-separated for multiple) | No |
 | `--description <text>` | Human-readable description stored in manifest | No |
 
@@ -234,3 +249,4 @@ Exit code is `1` on error, `0` on success.
 |----------|-------------|
 | `PROOF_DIR` | Override default proof directory (same as `--dir`) |
 | `PROOF_MODE` | Override auto-detection (`browser` or `terminal`) |
+| `PROOF_TAP_LOG` | Path to Android tap log JSON (default: `/tmp/proof-android-taps.json`) |
