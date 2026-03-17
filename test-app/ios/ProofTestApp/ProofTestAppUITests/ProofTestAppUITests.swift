@@ -3,6 +3,7 @@ import XCTest
 final class ProofTestAppUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
+        ProofTapLogger.shared.reset()
     }
 
     func testTapButton() throws {
@@ -13,18 +14,18 @@ final class ProofTestAppUITests: XCTestCase {
         XCTAssertEqual(messageLabel.label, "Hello, World!")
 
         let tapButton = app.buttons["tapButton"]
-        tapButton.tap()
+        tapButton.proofTap()
 
         XCTAssertEqual(messageLabel.label, "You tapped!")
 
-        tapButton.tap()
+        tapButton.proofTap()
         XCTAssertEqual(messageLabel.label, "Tapped 2x!")
 
-        tapButton.tap()
+        tapButton.proofTap()
         XCTAssertEqual(messageLabel.label, "Tapped 3x!")
 
         let resetButton = app.buttons["resetButton"]
-        resetButton.tap()
+        resetButton.proofTap()
 
         XCTAssertEqual(messageLabel.label, "Hello, World!")
     }

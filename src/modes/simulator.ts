@@ -1,11 +1,11 @@
-import { spawn } from "child_process";
+import { execSync, spawn } from "child_process";
 import { join } from "path";
-import { stat } from "fs/promises";
+import { stat, readFile } from "fs/promises";
 import { existsSync } from "fs";
 import { assertIosReady, resolveIosDevice, startIosRecording } from "./simulator-ios";
 import { getVideoDuration } from "../duration";
 import { findLatestXcresult, parseTapEvents } from "./xcresult";
-import { overlayTouchIndicators } from "./touch-overlay";
+import { overlayTouchIndicators, type TapCoordinate } from "./touch-overlay";
 import type { CaptureOptions, Recording } from "../types";
 
 const XCODEBUILD_CLONE_WARNING =
@@ -37,8 +37,6 @@ export async function captureSimulator(
   }
 
   const outputPath = join(runDir, `${filePrefix}.mp4`);
-
-  // Record the start time for correlating xcresult tap timestamps
   const recordingStartTime = new Date();
 
   const recording = startIosRecording(
@@ -69,18 +67,19 @@ export async function captureSimulator(
     );
   }
 
-  // Post-process: overlay touch indicators from xcresult data
+  // Post-process: overlay touch indicators
   if (isXcodebuildTest(options.command)) {
     try {
       const xcresultPath = findLatestXcresult();
       if (xcresultPath) {
         const taps = parseTapEvents(xcresultPath);
         if (taps.length > 0) {
-          await overlayTouchIndicators(outputPath, taps, recordingStartTime);
+          const tapCoords = findTapCoordinates(device.udid);
+          await overlayTouchIndicators(outputPath, taps, recordingStartTime, tapCoords ?? undefined);
         }
       }
     } catch {
-      // Non-fatal: if overlay fails, the raw recording is still valid
+      // Non-fatal
     }
   }
 
@@ -97,6 +96,33 @@ export async function captureSimulator(
     duration,
     label,
   };
+}
+
+function findTapCoordinates(udid: string): TapCoordinate[] | null {
+  try {
+    const deviceDir = join(
+      process.env.HOME ?? "/",
+      "Library/Developer/CoreSimulator/Devices",
+      udid,
+      "data/Containers/Data/Application",
+    );
+
+    // Search for proof-taps.json in the device's app containers
+    const result = execSync(
+      `find "${deviceDir}" -name "proof-taps.json" -maxdepth 2 2>/dev/null | head -1`,
+      { encoding: "utf-8" },
+    ).trim();
+
+    if (!result || !existsSync(result)) return null;
+
+    const data = JSON.parse(
+      require("fs").readFileSync(result, "utf-8"),
+    ) as TapCoordinate[];
+
+    return data.length > 0 ? data : null;
+  } catch {
+    return null;
+  }
 }
 
 function isXcodebuildTest(command: string): boolean {
