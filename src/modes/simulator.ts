@@ -1,10 +1,15 @@
 import { spawn } from "child_process";
 import { join } from "path";
-import { copyFile, stat } from "fs/promises";
+import { stat } from "fs/promises";
 import { existsSync } from "fs";
 import { assertIosReady, resolveIosDevice, startIosRecording } from "./simulator-ios";
 import { getVideoDuration } from "../duration";
 import type { CaptureOptions, Recording } from "../types";
+
+const XCODEBUILD_CLONE_WARNING =
+  "Hint: xcodebuild test clones the simulator by default, which means the " +
+  "recording captures an idle screen. Add these flags to your xcodebuild command: " +
+  "-parallel-testing-enabled NO -disable-concurrent-destination-testing";
 
 export async function captureSimulator(
   options: CaptureOptions & { command: string },
@@ -25,8 +30,14 @@ export async function captureSimulator(
     options.simulator?.os,
   );
 
+  // Warn if xcodebuild test is detected without clone-prevention flags
+  if (isXcodebuildTest(options.command) && !hasClonePreventionFlags(options.command)) {
+    console.error(`\n⚠️  ${XCODEBUILD_CLONE_WARNING}\n`);
+  }
+
   const outputPath = join(runDir, `${filePrefix}.mp4`);
 
+  // Start recording the booted simulator
   const recording = startIosRecording(
     device.udid,
     outputPath,
@@ -34,7 +45,7 @@ export async function captureSimulator(
   );
 
   // Run the user's command
-  const exitCode = await runCommand(options.command);
+  await runCommand(options.command);
 
   // Small delay to let the last frames render
   await sleep(500);
@@ -52,9 +63,12 @@ export async function captureSimulator(
 
   const fileStat = await stat(outputPath);
   if (fileStat.size === 0) {
+    const hint = isXcodebuildTest(options.command)
+      ? ` ${XCODEBUILD_CLONE_WARNING}`
+      : "";
     throw new Error(
       `Recording file is empty at ${outputPath}. ` +
-      `Check that the simulator screen was visible during recording.`
+      `Check that the simulator screen was visible during recording.${hint}`
     );
   }
 
@@ -71,6 +85,16 @@ export async function captureSimulator(
     duration,
     label,
   };
+}
+
+function isXcodebuildTest(command: string): boolean {
+  return /xcodebuild\s+.*\btest\b/.test(command) ||
+    /xcodebuild\s+.*\btest-without-building\b/.test(command);
+}
+
+function hasClonePreventionFlags(command: string): boolean {
+  return command.includes("-parallel-testing-enabled NO") ||
+    command.includes("-disable-concurrent-destination-testing");
 }
 
 function runCommand(command: string): Promise<number> {

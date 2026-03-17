@@ -25,6 +25,18 @@ export function assertIosReady(): void {
   }
 }
 
+export function getBootedUdids(): Set<string> {
+  const result = execSync("xcrun simctl list devices booted --json", { encoding: "utf-8" });
+  const data = JSON.parse(result);
+  const udids = new Set<string>();
+  for (const devs of Object.values(data.devices)) {
+    for (const dev of devs as any[]) {
+      if (dev.state === "Booted") udids.add(dev.udid);
+    }
+  }
+  return udids;
+}
+
 export function resolveIosDevice(deviceName?: string, os?: string): SimDevice {
   const result = execSync("xcrun simctl list devices --json", { encoding: "utf-8" });
   const data = JSON.parse(result);
