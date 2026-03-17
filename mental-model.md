@@ -2,7 +2,7 @@
 
 ## Overview
 
-A capture SDK and CLI that records visual evidence of test execution. Two modes: **browser** (Playwright video with device emulation and cursor highlights) and **terminal** (asciicast recording with self-contained HTML player). No opinions on workflow -- just captures proof that something happened. Ships as a standalone binary with TypeScript, Python, and Go SDKs. Consumers are expected to be tools, agents, CI scripts, or non-JS SDKs that call the CLI.
+A capture SDK and CLI that records visual evidence of test execution. Three modes: **browser** (Playwright video with device emulation and cursor highlights), **terminal** (asciicast recording with self-contained HTML player), and **simulator** (iOS Simulator screen recording with tap indicator overlays). No opinions on workflow -- just captures proof that something happened. Ships as a standalone binary with TypeScript, Python, and Go SDKs. Consumers are expected to be tools, agents, CI scripts, or non-JS SDKs that call the CLI.
 
 ## Architecture
 
@@ -11,8 +11,9 @@ Proof (class)
   |
   |-- capture(options) -----> resolveMode()
   |                              |
-  |                     browser: captureVisual()   --> runs npx playwright test, collects .webm
-  |                     terminal: captureTerminal() --> spawns command, records stdout/stderr with timestamps
+  |                     browser:   captureVisual()     --> runs npx playwright test, collects .webm
+  |                     terminal:  captureTerminal()   --> spawns command, records stdout/stderr with timestamps
+  |                     simulator: captureSimulator()  --> records iOS Simulator screen, runs command, post-processes with ffmpeg
   |                              |
   |                     appendToManifest() --> writes/updates proof.json
   |
@@ -33,6 +34,10 @@ src/
   modes/
     visual.ts       -- Browser capture: runs Playwright, collects video, cursor highlight script
     terminal.ts     -- Terminal capture: pipe-based, writes .cast + self-contained .html player
+    simulator.ts    -- Simulator orchestrator: start recording, run command, stop, post-process
+    simulator-ios.ts -- xcrun simctl wrappers: device resolution, boot, recording lifecycle
+    xcresult.ts     -- Parses .xcresult bundles for tap activity timestamps
+    touch-overlay.ts -- ffmpeg post-processing: red dot + ripple ring overlay at tap positions
 
 test-app/           -- Integration test app
   capture-proof.ts  -- E2E script: creates Proof instance, captures terminal + browser
@@ -43,6 +48,11 @@ test-app/           -- Integration test app
     index.html      -- Simple order form page
     orders.spec.ts  -- Playwright test with cursor highlight injection
     playwright.config.ts -- Configures video:on, slowMo:500
+  ios/
+    ProofTestApp/   -- SwiftUI test app (tap button, counter, reset)
+      ProofTestAppUITests/
+        ProofTapLogger.swift       -- XCUITest extension: element.proofTap() logs coordinates to JSON
+        ProofTestAppUITests.swift  -- UI tests using proofTap() for coordinate logging
 ```
 
 ### Evidence output structure
@@ -52,6 +62,7 @@ proofDir/appName/yyyymmdd/run/
   label-HHmmss.html       -- Terminal player (self-contained)
   label-HHmmss.cast       -- Asciicast v2 file
   label-HHmmss.webm       -- Browser video
+  label-HHmmss.mp4        -- Simulator video (with tap overlays if available)
   proof.json               -- Manifest with entries array
   report.md                -- Generated markdown report
 ```
@@ -78,13 +89,34 @@ proofDir/appName/yyyymmdd/run/
 8. Get duration via ffprobe
 9. Append entry to proof.json (with `device`/`viewport` fields if set)
 
+### Simulator capture
+1. `assertIosReady()` checks xcrun + simctl are available
+2. `resolveIosDevice()` finds a booted simulator or boots one by name/OS
+3. `startIosRecording()` spawns `xcrun simctl io <udid> recordVideo` in background
+4. Runs the user's command (typically `xcodebuild test`) via `/bin/sh -c`
+5. Sleeps 500ms for final frames, then sends SIGINT to stop recording gracefully
+6. **Post-processing (xcodebuild tests only):**
+   a. Find latest `.xcresult` bundle, parse tap activity timestamps via `xcrun xcresulttool`
+   b. Find `proof-taps.json` in simulator's app container (written by `ProofTapLogger.swift`)
+   c. Scale UIKit points to video pixels (3x for iPhone Pro retina)
+   d. Run ffmpeg with `geq` filter to overlay red dot + ripple ring at each tap's coordinates/time
+   e. Replace original recording with overlaid version
+7. Get duration via ffprobe, return Recording
+
+#### ProofTapLogger.swift (tap coordinate logging)
+- Drop-in XCUITest extension: replace `element.tap()` with `element.proofTap()`
+- Logs `{element, x, y, width, height, timestamp}` to `proof-taps.json` in the app's Documents directory
+- `ProofTapLogger.shared.reset()` in `setUp()` clears the log between test runs
+- Coordinates are UIKit points (element center), scaled to video pixels during overlay
+
 ### Mode detection (auto)
 1. Check for `playwright.config.{ts,js,mjs}` in cwd -> browser
 2. Check package.json for `@playwright/test` or `playwright` dep -> browser
 3. Fallback -> terminal
 
 ### CLI (cli.ts)
-- **Arg mode:** `proof capture --app <name> --command <cmd> [options]`
+- **Arg mode:** `proof capture --app <name> --command <cmd> [options]` (browser/terminal)
+- **Simulator mode:** `proof capture --app <name> --command <cmd> --mode simulator --platform ios [--device-name "iPhone 17 Pro"] [--os 18.4] [--codec h264]`
 - **JSON mode:** `echo '{"action":"capture",...}' | proof --json` -- supports multiple captures in one invocation
 - All output is JSON to stdout (machine-readable for other SDKs)
 - CLI uses the same `Proof` class internally
@@ -127,6 +159,12 @@ No other runtime dependencies. Terminal capture uses only Node/Bun built-ins. AN
 - **`device` and `viewport` are mutually exclusive** -- can't set both on the same capture call.
 - **Array device/viewport fans out** -- `capture()` returns `Recording[]` when given an array. Labels are auto-suffixed (e.g. `checkout-iphone-14`, `checkout-390x844`).
 - **`bun.lock` changes** -- bun regenerates the lockfile format on dependency changes; the diff can be noisy.
+- **xcodebuild clones simulators** -- `xcodebuild test` clones the simulator by default for parallel testing. The recording captures the idle original, not the clone. Fix: pass `-parallel-testing-enabled NO -disable-concurrent-destination-testing`. Proof warns if these flags are missing.
+- **Cloned simulators are invisible** -- xcodebuild clones don't appear in `simctl list devices`. No way to detect or record them programmatically.
+- **XCUITest taps bypass UIKit** -- synthetic touches are injected at the IOKit/HID level, completely bypassing the UIKit event pipeline. No swizzle, gesture recognizer, or overlay can intercept them. That's why tap indicators use post-processing, not runtime injection.
+- **simctl recordVideo captures raw framebuffer** -- iOS Simulator's built-in touch indicators (Settings > Accessibility > Touch) don't appear in recordVideo output.
+- **Tap log location** -- `proof-taps.json` is written to the test runner app's Documents directory on the simulator filesystem. After the test, proof searches `~/Library/Developer/CoreSimulator/Devices/<udid>/data/Containers/Data/Application/` for the file.
+- **Point-to-pixel scaling** -- UIKit coordinates are in points; video is in pixels. For iPhone Pro (3x retina), multiply by 3. `guessScaleFactor()` in touch-overlay.ts infers the scale from video resolution.
 
 ## Lessons Learned
 
@@ -134,3 +172,6 @@ No other runtime dependencies. Terminal capture uses only Node/Bun built-ins. AN
 - **`script` command is unreliable** -- first terminal implementation used `script` (macOS/Linux). Produced `^D` artifacts, platform-specific args, and raw ANSI blobs. Pipe-based capture with `spawn` is simpler and more portable.
 - **ffprobe for duration** -- `duration.ts` shells out to `ffprobe -v error -show_entries format=duration`. Works for both .webm and .mp4.
 - **Self-contained HTML is the right call** -- no CDN, no external player library. The HTML file works forever, offline, in any browser. Worth the ~7KB per file.
+- **Post-processing beats runtime overlay** -- tried multiple runtime approaches for tap indicators (swizzling, gesture recognizers, overlay windows). None work because XCUITest taps don't flow through UIKit. ffmpeg post-processing is reliable and keeps the test app unmodified.
+- **SIGINT for simctl recordVideo** -- the only clean way to stop `xcrun simctl io recordVideo`. SIGTERM or SIGKILL produces a corrupt/empty file. The 500ms sleep before SIGINT ensures the last frames are captured.
+- **xcresult has timestamps but no coordinates** -- `xcrun xcresulttool` gives activity summaries ("Tap button") with timestamps but no pixel coordinates. That's why ProofTapLogger.swift exists: the test itself must log where taps happened.
