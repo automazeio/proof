@@ -3,6 +3,14 @@ import { join } from "path";
 import { stat, readFile } from "fs/promises";
 import { existsSync } from "fs";
 import { assertIosReady, resolveIosDevice, startIosRecording } from "./simulator-ios";
+import {
+  assertAndroidReady,
+  resolveAndroidDevice,
+  startAndroidRecording,
+  pullAndMergeRecording,
+  enableTouchIndicators,
+  disableTouchIndicators,
+} from "./simulator-android";
 import { getVideoDuration } from "../duration";
 import { findLatestXcresult, parseTapEvents } from "./xcresult";
 import { overlayTouchIndicators, type TapCoordinate } from "./touch-overlay";
@@ -22,7 +30,7 @@ export async function captureSimulator(
   const platform = options.platform ?? "ios";
 
   if (platform === "android") {
-    throw new Error("Android simulator capture is not yet implemented");
+    return captureAndroid(options, runDir, filePrefix, label);
   }
 
   assertIosReady();
@@ -81,6 +89,68 @@ export async function captureSimulator(
     } catch {
       // Non-fatal
     }
+  }
+
+  let duration: number;
+  try {
+    duration = await getVideoDuration(outputPath);
+  } catch {
+    duration = 0;
+  }
+
+  return {
+    path: outputPath,
+    mode: "simulator",
+    duration,
+    label,
+  };
+}
+
+async function captureAndroid(
+  options: CaptureOptions & { command: string },
+  runDir: string,
+  filePrefix: string,
+  label: string,
+): Promise<Recording> {
+  assertAndroidReady();
+
+  const device = resolveAndroidDevice(
+    options.simulator?.deviceName,
+    options.simulator?.deviceId,
+  );
+
+  const outputPath = join(runDir, `${filePrefix}.mp4`);
+
+  enableTouchIndicators(device.serial);
+
+  const recording = startAndroidRecording(device.serial, {
+    bitRate: options.simulator?.bitRate,
+    size: options.simulator?.size,
+  });
+
+  try {
+    await runCommand(options.command);
+    await sleep(500);
+  } finally {
+    await recording.stop();
+    disableTouchIndicators(device.serial);
+  }
+
+  pullAndMergeRecording(device.serial, recording.remoteFiles, outputPath);
+
+  if (!existsSync(outputPath)) {
+    throw new Error(
+      `Recording file not found at ${outputPath}. ` +
+      `The emulator may have crashed during recording.`
+    );
+  }
+
+  const fileStat = await stat(outputPath);
+  if (fileStat.size === 0) {
+    throw new Error(
+      `Recording file is empty at ${outputPath}. ` +
+      `Check that the emulator screen was visible during recording.`
+    );
   }
 
   let duration: number;

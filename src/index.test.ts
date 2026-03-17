@@ -246,16 +246,22 @@ describe("Proof", () => {
       ).rejects.toThrow("simulator mode requires platform");
     });
 
-    test("throws for android (not yet implemented)", async () => {
+    test("android: enters android code path (fails on missing device, not stub)", async () => {
       const proof = new Proof({
         appName: "test-app",
         proofDir: tempDir,
         run: "test-run",
       });
-
-      expect(
-        proof.capture({ mode: "simulator", platform: "android", command: "echo hi", label: "fail" })
-      ).rejects.toThrow("Android simulator capture is not yet implemented");
+      // Use a fake deviceId to skip emulator boot and fail fast on adb pull.
+      // Verifies the Android code path exists (no longer a stub).
+      const capture = proof.capture({
+        mode: "simulator",
+        platform: "android",
+        command: "echo hi",
+        label: "fail",
+        simulator: { deviceId: "emulator-9999" },
+      });
+      await expect(capture).rejects.not.toThrow("Android simulator capture is not yet implemented");
     });
   });
 
