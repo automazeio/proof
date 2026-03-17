@@ -42,6 +42,8 @@ npm install -g @automaze/proof
 
 **Browser capture** -- runs Playwright tests with video recording, collects `.webm` files with optional cursor highlighting.
 
+**Simulator capture** -- records iOS Simulator or Android emulator screen while running your tests. Automatically overlays red dot + ripple tap indicators at the exact positions of each tap.
+
 **Report** -- a `proof.json` manifest per run, plus a generated markdown summary linking to all artifacts.
 
 ## Quick start
@@ -279,10 +281,64 @@ evidence/my-app/20260312/deploy-v2/
 | `PROOF_DIR` | Override default proof directory |
 | `PROOF_MODE` | Override auto-detection (`browser` or `terminal`) |
 
+## Simulator mode
+
+Record your iOS Simulator or Android emulator while running UI tests. Tap indicators are overlaid automatically so reviewers can see exactly what was tapped.
+
+**iOS (XCUITest)**
+
+```bash
+proof capture \
+  --app my-app \
+  --mode simulator \
+  --platform ios \
+  --device-name "iPhone 17 Pro" \
+  --command "xcodebuild test \
+    -project MyApp.xcodeproj \
+    -scheme MyApp \
+    -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+    -parallel-testing-enabled NO \
+    -disable-concurrent-destination-testing"
+```
+
+For pixel-accurate tap indicators, add `ProofTapLogger.swift` to your XCUITest target and replace `element.tap()` with `element.proofTap()`. Proof reads the tap log after the test and overlays red dot + ripple rings at the correct positions.
+
+**Android (Espresso / UIAutomator)**
+
+```bash
+proof capture \
+  --app my-app \
+  --mode simulator \
+  --platform android \
+  --command "./run-espresso-tests.sh"
+```
+
+Write tap coordinates and relative timestamps to `/tmp/proof-android-taps.json` (or `$PROOF_TAP_LOG`) from your test script:
+
+```json
+[
+  { "element": "Login", "x": 540, "y": 1200, "offsetMs": 1000 },
+  { "element": "Submit", "x": 540, "y": 1800, "offsetMs": 3500 }
+]
+```
+
+Proof overlays red dot + ripple indicators at each position. If no tap log is found, the video is still captured without indicators.
+
+**Options**
+
+| Flag | Description |
+|------|-------------|
+| `--platform` | `ios` or `android` |
+| `--device-name` | Simulator/AVD name to boot (uses running device if omitted) |
+| `--os` | iOS version filter, e.g. `18.4` |
+| `--codec` | iOS recording codec: `h264` (default) or `hevc` |
+
 ## Requirements
 
 - **Terminal mode**: No external dependencies
 - **Browser mode**: `@playwright/test`, `video: 'on'` in Playwright config
+- **Simulator mode (iOS)**: Xcode + Simulator, `ffmpeg` on PATH
+- **Simulator mode (Android)**: Android SDK (`adb`, `emulator`), `ffmpeg` on PATH
 - **Video duration**: `ffprobe` on PATH
 
 ## Agent Skill

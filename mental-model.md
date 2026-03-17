@@ -36,6 +36,7 @@ src/
     terminal.ts     -- Terminal capture: pipe-based, writes .cast + self-contained .html player
     simulator.ts    -- Simulator orchestrator: start recording, run command, stop, post-process
     simulator-ios.ts -- xcrun simctl wrappers: device resolution, boot, recording lifecycle
+    simulator-android.ts -- adb/emulator wrappers: device resolution, AVD boot, recording lifecycle
     xcresult.ts     -- Parses .xcresult bundles for tap activity timestamps
     touch-overlay.ts -- ffmpeg post-processing: red dot + ripple ring overlay at tap positions
 
@@ -89,7 +90,7 @@ proofDir/appName/yyyymmdd/run/
 8. Get duration via ffprobe
 9. Append entry to proof.json (with `device`/`viewport` fields if set)
 
-### Simulator capture
+### Simulator capture (iOS)
 1. `assertIosReady()` checks xcrun + simctl are available
 2. `resolveIosDevice()` finds a booted simulator or boots one by name/OS
 3. `startIosRecording()` spawns `xcrun simctl io <udid> recordVideo` in background
@@ -109,6 +110,21 @@ proofDir/appName/yyyymmdd/run/
 - `ProofTapLogger.shared.reset()` in `setUp()` clears the log between test runs
 - Coordinates are UIKit points (element center), scaled to video pixels during overlay
 
+### Simulator capture (Android)
+1. `assertAndroidReady()` checks adb is available (looks in `~/Library/Android/sdk/platform-tools/`)
+2. `resolveAndroidDevice()` finds a running emulator or boots an AVD by name
+3. `startAndroidRecording()` issues `adb emu screenrecord start <host-path>` -- saves directly to host
+4. Runs the user's command via `/bin/sh -c`
+5. Sleeps 500ms, then issues `adb emu screenrecord stop`
+6. Converts `.webm` to `.mp4` via ffmpeg
+7. **Post-processing (optional):** reads `$PROOF_TAP_LOG` (default `/tmp/proof-android-taps.json`)
+   - Format: `[{element, x, y, offsetMs}]` where x/y are video pixel coordinates
+   - Applies ffmpeg overlay with `scaleFactor=1` (video is already at native device resolution)
+8. Get duration via ffprobe, return Recording
+
+#### Why `adb emu screenrecord` not `adb shell screenrecord`
+`adb shell screenrecord` uses the Android hardware AVC encoder. On Apple Silicon emulators with the `gfxstream` graphics backend, this produces 0 frames -- the encoder can't capture from a virtual display. `adb emu screenrecord` captures directly from the emulator's virtual framebuffer via the QEMU monitor protocol, bypassing the hardware encoder entirely.
+
 ### Mode detection (auto)
 1. Check for `playwright.config.{ts,js,mjs}` in cwd -> browser
 2. Check package.json for `@playwright/test` or `playwright` dep -> browser
@@ -116,7 +132,8 @@ proofDir/appName/yyyymmdd/run/
 
 ### CLI (cli.ts)
 - **Arg mode:** `proof capture --app <name> --command <cmd> [options]` (browser/terminal)
-- **Simulator mode:** `proof capture --app <name> --command <cmd> --mode simulator --platform ios [--device-name "iPhone 17 Pro"] [--os 18.4] [--codec h264]`
+- **Simulator mode (iOS):** `proof capture --app <name> --command <cmd> --mode simulator --platform ios [--device-name "iPhone 17 Pro"] [--os 18.4] [--codec h264]`
+- **Simulator mode (Android):** `proof capture --app <name> --command <cmd> --mode simulator --platform android [--device-name "Pixel_3a"]`
 - **JSON mode:** `echo '{"action":"capture",...}' | proof --json` -- supports multiple captures in one invocation
 - All output is JSON to stdout (machine-readable for other SDKs)
 - CLI uses the same `Proof` class internally
@@ -165,6 +182,9 @@ No other runtime dependencies. Terminal capture uses only Node/Bun built-ins. AN
 - **simctl recordVideo captures raw framebuffer** -- iOS Simulator's built-in touch indicators (Settings > Accessibility > Touch) don't appear in recordVideo output.
 - **Tap log location** -- `proof-taps.json` is written to the test runner app's Documents directory on the simulator filesystem. After the test, proof searches `~/Library/Developer/CoreSimulator/Devices/<udid>/data/Containers/Data/Application/` for the file.
 - **Point-to-pixel scaling** -- UIKit coordinates are in points; video is in pixels. For iPhone Pro (3x retina), multiply by 3. `guessScaleFactor()` in touch-overlay.ts infers the scale from video resolution.
+- **Android `adb shell screenrecord` produces 0 frames** -- on Apple Silicon with the gfxstream backend, the hardware AVC encoder cannot capture from a virtual display. Use `adb emu screenrecord` instead, which captures via the QEMU monitor.
+- **Android tap log is caller-provided** -- unlike iOS (where proof reads the xcresult + app container automatically), Android requires the test script to write `/tmp/proof-android-taps.json`. Set `$PROOF_TAP_LOG` to override the path.
+- **`adb emu screenrecord` outputs `.webm`** -- must be converted to `.mp4` via ffmpeg for consistency. The webm is deleted after conversion.
 
 ## Lessons Learned
 
