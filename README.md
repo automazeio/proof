@@ -15,6 +15,9 @@
 
 `proof` captures terminal output and browser interactions as shareable evidence -- animated HTML replays, videos, and structured reports. Run your tests through proof, get artifacts you can attach to PRs, send to stakeholders, or keep as a record.
 
+> [!NOTE]
+> **Native mobile apps are supported.** Proof can record iOS Simulator and Android emulator screens while your XCUITest or Espresso tests run, with automatic tap indicator overlays. See [Simulator mode](#simulator-mode).
+
 ![Proof](https://raw.githubusercontent.com/automazeio/proof/main/screenshot.webp)
 
 ## Get started
@@ -284,6 +287,12 @@ evidence/my-app/20260312/deploy-v2/
 ## Simulator mode
 
 Record your iOS Simulator or Android emulator while running UI tests. Tap indicators are overlaid automatically so reviewers can see exactly what was tapped.
+
+> [!IMPORTANT]
+> **Simulators must be installed locally.** Proof drives the simulator directly on your machine -- it does not provision or download simulators for you.
+>
+> - **iOS**: Xcode and at least one iOS Simulator runtime must be installed (via Xcode → Settings → Platforms). The simulator will be booted automatically if not already running.
+> - **Android**: Android Studio and at least one AVD must be created (via Android Studio → Tools → Device Manager). The emulator will be booted automatically if not already running.
 
 **iOS (XCUITest)**
 
