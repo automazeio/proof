@@ -4,6 +4,8 @@ import { stat } from "fs/promises";
 import { existsSync } from "fs";
 import { assertIosReady, resolveIosDevice, startIosRecording } from "./simulator-ios";
 import { getVideoDuration } from "../duration";
+import { findLatestXcresult, parseTapEvents } from "./xcresult";
+import { overlayTouchIndicators } from "./touch-overlay";
 import type { CaptureOptions, Recording } from "../types";
 
 const XCODEBUILD_CLONE_WARNING =
@@ -30,30 +32,25 @@ export async function captureSimulator(
     options.simulator?.os,
   );
 
-  // Warn if xcodebuild test is detected without clone-prevention flags
   if (isXcodebuildTest(options.command) && !hasClonePreventionFlags(options.command)) {
     console.error(`\n⚠️  ${XCODEBUILD_CLONE_WARNING}\n`);
   }
 
   const outputPath = join(runDir, `${filePrefix}.mp4`);
 
-  // Start recording the booted simulator
+  // Record the start time for correlating xcresult tap timestamps
+  const recordingStartTime = new Date();
+
   const recording = startIosRecording(
     device.udid,
     outputPath,
     options.simulator?.codec,
   );
 
-  // Run the user's command
   await runCommand(options.command);
-
-  // Small delay to let the last frames render
   await sleep(500);
-
-  // Stop recording
   await recording.stop();
 
-  // Verify file exists
   if (!existsSync(outputPath)) {
     throw new Error(
       `Recording file not found at ${outputPath}. ` +
@@ -70,6 +67,21 @@ export async function captureSimulator(
       `Recording file is empty at ${outputPath}. ` +
       `Check that the simulator screen was visible during recording.${hint}`
     );
+  }
+
+  // Post-process: overlay touch indicators from xcresult data
+  if (isXcodebuildTest(options.command)) {
+    try {
+      const xcresultPath = findLatestXcresult();
+      if (xcresultPath) {
+        const taps = parseTapEvents(xcresultPath);
+        if (taps.length > 0) {
+          await overlayTouchIndicators(outputPath, taps, recordingStartTime);
+        }
+      }
+    } catch {
+      // Non-fatal: if overlay fails, the raw recording is still valid
+    }
   }
 
   let duration: number;
