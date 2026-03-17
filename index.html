@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proof — Visual evidence for every test run</title>
+  <meta name="description" content="Proof captures terminal output, browser interactions, and mobile simulator recordings as shareable evidence. Attach replays to PRs, not just screenshots." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            surface: '#0d0d0d',
+            sidebar: '#111111',
+            border: '#1e1e1e',
+            'border-light': '#2a2a2a',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+    .toc-link { transition: color 0.15s, border-color 0.15s; }
+    .toc-link.active { color: #e4e4e7; border-left-color: #e4e4e7; }
+
+    .mode-card { transition: border-color 0.2s, background 0.2s; }
+    .mode-card:hover { border-color: #3a3a3a; background: #161616; }
+
+    .copy-btn { transition: opacity 0.15s; }
+
+    .hero-dot-grid {
+      background-image: radial-gradient(circle, #2a2a2a 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 500; letter-spacing: 0.04em;
+      padding: 3px 10px; border-radius: 999px;
+      border: 1px solid #2a2a2a; color: #71717a;
+      text-transform: uppercase;
+    }
+
+    @keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }
+    .cursor { display: inline-block; width: 7px; height: 14px; background: #52525b; animation: blink 1.2s step-end infinite; vertical-align: middle; margin-left: 2px; }
+
+    /* Mobile sidebar overlay */
+    #sidebar-overlay { display: none; }
+    #sidebar-overlay.open { display: block; }
+    @media (max-width: 768px) {
+      #sidebar { transform: translateX(-100%); transition: transform 0.25s; }
+      #sidebar.open { transform: translateX(0); }
+    }
+  </style>
+</head>
+<body class="bg-surface text-zinc-300 font-sans antialiased">
+
+<!-- Mobile overlay -->
+<div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden" onclick="toggleSidebar()"></div>
+
+<!-- Layout -->
+<div class="flex min-h-screen">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="fixed top-0 left-0 h-screen w-56 bg-sidebar border-r border-border flex flex-col z-40 md:translate-x-0">
+    <!-- Logo -->
+    <div class="px-6 pt-7 pb-6 border-b border-border">
+      <a href="#overview" class="flex items-center gap-2.5 group">
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="7" fill="#18181b"/>
+          <path d="M9 22L16 10L23 22H9Z" fill="none" stroke="#a1a1aa" stroke-width="1.5" stroke-linejoin="round"/>
+          <circle cx="16" cy="17" r="2" fill="#71717a"/>
+        </svg>
+        <span class="text-zinc-100 font-semibold tracking-tight text-[15px]">proof</span>
+      </a>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-3 py-5 overflow-y-auto">
+      <p class="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Navigation</p>
+      <ul class="space-y-0.5">
+        <li><a href="#overview"   class="toc-link nav-link flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-zinc-500 hover:text-zinc-200 rounded border-l-2 border-transparent pl-3">Overview</a></li>
+        <li><a href="#modes"      class="toc-link nav-link flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-zinc-500 hover:text-zinc-200 rounded border-l-2 border-transparent pl-3">Capture Modes</a></li>
+        <li><a href="#simulator"  class="toc-link nav-link flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-zinc-500 hover:text-zinc-200 rounded border-l-2 border-transparent pl-3">Mobile &amp; Simulators</a></li>
+        <li><a href="#install"    class="toc-link nav-link flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-zinc-500 hover:text-zinc-200 rounded border-l-2 border-transparent pl-3">Get Started</a></li>
+        <li><a href="#sdks"       class="toc-link nav-link flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-zinc-500 hover:text-zinc-200 rounded border-l-2 border-transparent pl-3">SDKs</a></li>
+        <li><a href="#faq"        class="toc-link nav-link flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-zinc-500 hover:text-zinc-200 rounded border-l-2 border-transparent pl-3">FAQ</a></li>
+      </ul>
+
+      <div class="mt-6 pt-5 border-t border-border">
+        <p class="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Links</p>
+        <ul class="space-y-0.5">
+          <li>
+            <a href="https://github.com/automazeio/proof" target="_blank" class="flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-zinc-500 hover:text-zinc-200 rounded">
+              GitHub
+              <svg class="ml-auto" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          </li>
+          <li>
+            <a href="https://www.npmjs.com/package/@automaze/proof" target="_blank" class="flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-zinc-500 hover:text-zinc-200 rounded">
+              npm
+              <svg class="ml-auto" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Version -->
+    <div class="px-6 py-4 border-t border-border">
+      <span class="text-[11px] text-zinc-600 font-mono">v0.20260317.0</span>
+    </div>
+  </aside>
+
+  <!-- Mobile hamburger -->
+  <button onclick="toggleSidebar()" class="fixed top-4 left-4 z-50 md:hidden bg-sidebar border border-border rounded-md p-2 text-zinc-400">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+
+  <!-- Main content -->
+  <main class="md:ml-56 flex-1 max-w-3xl px-8 md:px-14 py-0">
+
+    <!-- ─── OVERVIEW ───────────────────────────────────────────── -->
+    <section id="overview" class="pt-20 pb-16 border-b border-border">
+
+      <div class="hero-dot-grid absolute inset-0 opacity-40 pointer-events-none" aria-hidden="true"></div>
+
+      <div class="relative">
+        <span class="tag mb-5">Open Source · Apache 2.0</span>
+
+        <h1 class="text-[2.6rem] font-semibold leading-[1.15] tracking-tight text-zinc-100 mt-4 mb-5">
+          A 10-second recording<br class="hidden sm:block"/> is worth more than<br class="hidden sm:block"/> a 200-line diff.
+        </h1>
+
+        <p class="text-[17px] text-zinc-400 leading-relaxed max-w-xl mb-8">
+          Proof captures terminal output, browser interactions, and mobile simulator recordings as shareable, replayable evidence. Attach it to PRs. Send it to stakeholders. Keep it as a record.
+        </p>
+
+        <!-- Install command -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <div class="flex items-center gap-3 bg-[#111] border border-border-light rounded-lg px-4 py-2.5 font-mono text-[13px] text-zinc-300">
+            <span class="text-zinc-600 select-none">$</span>
+            <span id="install-cmd">curl -fsSL https://automaze.io/install/proof | sh</span>
+            <button onclick="copyInstall()" class="copy-btn ml-2 text-zinc-600 hover:text-zinc-300" title="Copy">
+              <svg id="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <svg id="check-icon" class="hidden" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </button>
+          </div>
+          <a href="#install" class="text-[13px] text-zinc-500 hover:text-zinc-300 transition-colors">Other install options →</a>
+        </div>
+      </div>
+
+      <!-- Mock terminal output -->
+      <div class="mt-12 rounded-xl border border-border overflow-hidden bg-[#0f0f0f]">
+        <div class="flex items-center gap-2 px-4 py-3 border-b border-border bg-[#111]">
+          <span class="w-3 h-3 rounded-full bg-[#ff5f56]"></span>
+          <span class="w-3 h-3 rounded-full bg-[#ffbd2e]"></span>
+          <span class="w-3 h-3 rounded-full bg-[#27c93f]"></span>
+          <span class="ml-3 text-[11px] font-mono text-zinc-600">terminal</span>
+        </div>
+        <div class="p-5 font-mono text-[12.5px] leading-6">
+          <div class="text-zinc-600">$ proof capture --app checkout --command "pytest tests/ -v" --mode terminal</div>
+          <div class="mt-2 text-zinc-500">Running: pytest tests/ -v</div>
+          <div class="text-zinc-500 mt-0.5">
+            <span class="text-green-500">PASSED</span> tests/test_cart.py::test_add_item
+          </div>
+          <div class="text-zinc-500">
+            <span class="text-green-500">PASSED</span> tests/test_cart.py::test_checkout_flow
+          </div>
+          <div class="text-zinc-500">
+            <span class="text-green-500">PASSED</span> tests/test_auth.py::test_login
+          </div>
+          <div class="mt-2 text-zinc-600">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+          <div class="mt-2 text-zinc-400">
+            <span class="text-zinc-600">→</span> <span class="text-amber-400/90">checkout-143012.html</span> <span class="text-zinc-600">1.2s · terminal replay</span>
+          </div>
+          <div class="text-zinc-400">
+            <span class="text-zinc-600">→</span> <span class="text-amber-400/90">proof.json</span> <span class="text-zinc-600">manifest updated</span>
+          </div>
+          <div class="mt-1 text-zinc-600">
+            <span class="cursor"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- What you get -->
+      <div class="mt-8 grid grid-cols-3 gap-3">
+        <div class="rounded-lg border border-border bg-[#111] p-4">
+          <div class="text-[11px] font-mono text-zinc-600 mb-1">.html</div>
+          <div class="text-[13px] text-zinc-300 font-medium">Self-contained replay</div>
+          <div class="text-[12px] text-zinc-600 mt-1">No CDN. Works offline forever.</div>
+        </div>
+        <div class="rounded-lg border border-border bg-[#111] p-4">
+          <div class="text-[11px] font-mono text-zinc-600 mb-1">.mp4</div>
+          <div class="text-[13px] text-zinc-300 font-medium">Simulator video</div>
+          <div class="text-[12px] text-zinc-600 mt-1">With tap indicator overlays.</div>
+        </div>
+        <div class="rounded-lg border border-border bg-[#111] p-4">
+          <div class="text-[11px] font-mono text-zinc-600 mb-1">proof.json</div>
+          <div class="text-[13px] text-zinc-300 font-medium">Structured manifest</div>
+          <div class="text-[12px] text-zinc-600 mt-1">Every run, every artifact.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── MODES ──────────────────────────────────────────────── -->
+    <section id="modes" class="pt-16 pb-16 border-b border-border">
+      <h2 class="text-[11px] font-semibold uppercase tracking-widest text-zinc-600 mb-3">Capture Modes</h2>
+      <p class="text-2xl font-semibold text-zinc-100 tracking-tight mb-2">Three ways to capture proof.</p>
+      <p class="text-zinc-500 text-[15px] mb-10">Pick the one that matches your test type. Mix and match in a single run.</p>
+
+      <div class="space-y-4">
+
+        <!-- Terminal -->
+        <div class="mode-card rounded-xl border border-border bg-[#111] p-6">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                <span class="text-[13px] font-semibold text-zinc-200">Terminal</span>
+              </div>
+              <p class="text-[13px] text-zinc-500">Runs any shell command. Captures stdout/stderr with real timestamps into a self-contained HTML player.</p>
+            </div>
+            <span class="tag shrink-0 ml-4">Any runner</span>
+          </div>
+          <pre class="bg-surface rounded-lg border border-border text-[12px] font-mono text-zinc-400 p-4 overflow-x-auto"><span class="text-zinc-600">$</span> proof capture \
+  --app my-app \
+  --command <span class="text-amber-400/80">"pytest tests/ -v"</span> \
+  --mode terminal</pre>
+          <p class="text-[12px] text-zinc-600 mt-3">Works with pytest, go test, cargo test, bun test, make check — anything that writes to stdout.</p>
+        </div>
+
+        <!-- Browser -->
+        <div class="mode-card rounded-xl border border-border bg-[#111] p-6">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <span class="text-[13px] font-semibold text-zinc-200">Browser</span>
+              </div>
+              <p class="text-[13px] text-zinc-500">Runs Playwright tests with video recording. Supports device emulation, custom viewports, and cursor highlights.</p>
+            </div>
+            <span class="tag shrink-0 ml-4">Playwright</span>
+          </div>
+          <pre class="bg-surface rounded-lg border border-border text-[12px] font-mono text-zinc-400 p-4 overflow-x-auto"><span class="text-zinc-600">$</span> proof capture \
+  --app my-app \
+  --test-file tests/checkout.spec.ts \
+  --mode browser \
+  --device <span class="text-amber-400/80">"iPhone 14"</span></pre>
+          <p class="text-[12px] text-zinc-600 mt-3">Pass an array of devices or viewports to capture the same test across multiple screen sizes in one call.</p>
+        </div>
+
+        <!-- Simulator -->
+        <div class="mode-card rounded-xl border border-border bg-[#111] p-6">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18" stroke-width="2" stroke-linecap="round"/></svg>
+                <span class="text-[13px] font-semibold text-zinc-200">Simulator</span>
+              </div>
+              <p class="text-[13px] text-zinc-500">Records iOS Simulator or Android emulator while your XCUITest or Espresso tests run. Overlays pixel-accurate tap indicators automatically.</p>
+            </div>
+            <span class="tag shrink-0 ml-4">iOS · Android</span>
+          </div>
+          <pre class="bg-surface rounded-lg border border-border text-[12px] font-mono text-zinc-400 p-4 overflow-x-auto"><span class="text-zinc-600">$</span> proof capture \
+  --app my-app \
+  --mode simulator \
+  --platform <span class="text-amber-400/80">ios</span> \
+  --device-name <span class="text-amber-400/80">"iPhone 17 Pro"</span> \
+  --command <span class="text-amber-400/80">"xcodebuild test ..."</span></pre>
+          <a href="#simulator" class="inline-block text-[12px] text-zinc-500 hover:text-zinc-300 mt-3 transition-colors">Learn more about simulator mode →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── SIMULATOR ─────────────────────────────────────────── -->
+    <section id="simulator" class="pt-16 pb-16 border-b border-border">
+      <h2 class="text-[11px] font-semibold uppercase tracking-widest text-zinc-600 mb-3">Mobile &amp; Simulators</h2>
+      <p class="text-2xl font-semibold text-zinc-100 tracking-tight mb-2">Native app testing, with tap indicators.</p>
+      <p class="text-zinc-500 text-[15px] mb-8">Proof drives the simulator locally, records the screen, and overlays red dot + ripple tap indicators at the exact position of each tap — so reviewers see what was tapped, not just that tests passed.</p>
+
+      <!-- Important callout -->
+      <div class="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 mb-8 flex gap-3">
+        <svg class="shrink-0 mt-0.5" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>
+          <p class="text-[13px] font-medium text-amber-400/90 mb-1">Simulators must be installed locally</p>
+          <p class="text-[12px] text-zinc-500 leading-relaxed">Proof drives the simulator on your machine — it does not download or provision them. <strong class="text-zinc-400">iOS:</strong> install via Xcode → Settings → Platforms. <strong class="text-zinc-400">Android:</strong> create an AVD in Android Studio → Tools → Device Manager.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="rounded-xl border border-border bg-[#111] p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"/></svg>
+            <span class="text-[13px] font-semibold text-zinc-200">iOS (XCUITest)</span>
+          </div>
+          <ul class="space-y-2 text-[12px] text-zinc-500">
+            <li class="flex gap-2"><span class="text-zinc-700">→</span> Records via <span class="font-mono text-zinc-400">xcrun simctl recordVideo</span></li>
+            <li class="flex gap-2"><span class="text-zinc-700">→</span> Add <span class="font-mono text-zinc-400">ProofTapLogger.swift</span> to your test target</li>
+            <li class="flex gap-2"><span class="text-zinc-700">→</span> Replace <span class="font-mono text-zinc-400">.tap()</span> with <span class="font-mono text-zinc-400">.proofTap()</span></li>
+            <li class="flex gap-2"><span class="text-zinc-700">→</span> Pixel-accurate overlays from xcresult + tap log</li>
+          </ul>
+          <div class="mt-4 text-[11px] text-amber-600/80 bg-amber-500/5 border border-amber-500/10 rounded px-3 py-2 font-mono">-parallel-testing-enabled NO</div>
+        </div>
+        <div class="rounded-xl border border-border bg-[#111] p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span class="text-[13px] font-semibold text-zinc-200">Android (Espresso)</span>
+          </div>
+          <ul class="space-y-2 text-[12px] text-zinc-500">
+            <li class="flex gap-2"><span class="text-zinc-700">→</span> Records via <span class="font-mono text-zinc-400">adb emu screenrecord</span></li>
+            <li class="flex gap-2"><span class="text-zinc-700">→</span> Works on Apple Silicon (bypasses gfxstream issue)</li>
+            <li class="flex gap-2"><span class="text-zinc-700">→</span> Write tap coords to <span class="font-mono text-zinc-400">$PROOF_TAP_LOG</span></li>
+            <li class="flex gap-2"><span class="text-zinc-700">→</span> Auto-boots AVD if not already running</li>
+          </ul>
+          <div class="mt-4 text-[11px] text-zinc-500 bg-surface border border-border rounded px-3 py-2 font-mono">PROOF_TAP_LOG=/tmp/proof-taps.json</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── INSTALL ────────────────────────────────────────────── -->
+    <section id="install" class="pt-16 pb-16 border-b border-border">
+      <h2 class="text-[11px] font-semibold uppercase tracking-widest text-zinc-600 mb-3">Get Started</h2>
+      <p class="text-2xl font-semibold text-zinc-100 tracking-tight mb-8">Install in 10 seconds.</p>
+
+      <div class="space-y-3">
+        <div class="rounded-xl border border-border bg-[#111] p-5">
+          <div class="text-[11px] uppercase tracking-widest text-zinc-600 mb-3 font-semibold">macOS / Linux</div>
+          <div class="font-mono text-[13px] text-zinc-300 bg-surface border border-border rounded-lg px-4 py-3 flex items-center justify-between">
+            <span><span class="text-zinc-600">$</span> curl -fsSL https://automaze.io/install/proof | sh</span>
+            <button onclick="copyText('curl -fsSL https://automaze.io/install/proof | sh', this)" class="copy-btn text-zinc-600 hover:text-zinc-300 ml-4 shrink-0">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-border bg-[#111] p-5">
+          <div class="text-[11px] uppercase tracking-widest text-zinc-600 mb-3 font-semibold">Homebrew</div>
+          <div class="font-mono text-[13px] text-zinc-300 bg-surface border border-border rounded-lg px-4 py-3 flex items-center justify-between">
+            <span><span class="text-zinc-600">$</span> brew install automazeio/tap/proof</span>
+            <button onclick="copyText('brew install automazeio/tap/proof', this)" class="copy-btn text-zinc-600 hover:text-zinc-300 ml-4 shrink-0">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-border bg-[#111] p-5">
+          <div class="text-[11px] uppercase tracking-widest text-zinc-600 mb-3 font-semibold">npm (Node.js / TypeScript)</div>
+          <div class="font-mono text-[13px] text-zinc-300 bg-surface border border-border rounded-lg px-4 py-3 flex items-center justify-between">
+            <span><span class="text-zinc-600">$</span> npm install -g @automaze/proof</span>
+            <button onclick="copyText('npm install -g @automaze/proof', this)" class="copy-btn text-zinc-600 hover:text-zinc-300 ml-4 shrink-0">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick example -->
+      <div class="mt-8 rounded-xl border border-border bg-[#111] p-6">
+        <div class="text-[12px] font-semibold text-zinc-500 uppercase tracking-widest mb-4">Quick example</div>
+        <pre class="text-[12.5px] font-mono text-zinc-400 leading-6 overflow-x-auto"><span class="text-zinc-600"># 1. Capture your tests</span>
+proof capture \
+  --app my-app \
+  --command <span class="text-amber-400/80">"npm test"</span> \
+  --mode terminal \
+  --dir ./evidence
+
+<span class="text-zinc-600"># 2. Generate a report</span>
+proof report \
+  --app my-app \
+  --dir ./evidence \
+  --format html
+
+<span class="text-zinc-600"># 3. Attach evidence/my-app/... to your PR</span></pre>
+      </div>
+    </section>
+
+    <!-- ─── SDKS ───────────────────────────────────────────────── -->
+    <section id="sdks" class="pt-16 pb-16 border-b border-border">
+      <h2 class="text-[11px] font-semibold uppercase tracking-widest text-zinc-600 mb-3">SDKs</h2>
+      <p class="text-2xl font-semibold text-zinc-100 tracking-tight mb-2">Works from any language.</p>
+      <p class="text-zinc-500 text-[15px] mb-8">All SDKs are thin wrappers around the same CLI binary. Install the binary once, use it from anywhere.</p>
+
+      <div class="grid grid-cols-2 gap-3">
+        <a href="https://www.npmjs.com/package/@automaze/proof" target="_blank" class="mode-card rounded-xl border border-border bg-[#111] p-5 block">
+          <div class="text-[13px] font-semibold text-zinc-200 mb-1">TypeScript / Node.js</div>
+          <div class="font-mono text-[11px] text-zinc-600 mb-3">@automaze/proof</div>
+          <div class="font-mono text-[11px] text-amber-400/70 bg-surface rounded px-3 py-2 border border-border">npm install @automaze/proof</div>
+        </a>
+        <a href="https://pypi.org/project/automaze-proof/" target="_blank" class="mode-card rounded-xl border border-border bg-[#111] p-5 block">
+          <div class="text-[13px] font-semibold text-zinc-200 mb-1">Python</div>
+          <div class="font-mono text-[11px] text-zinc-600 mb-3">automaze-proof</div>
+          <div class="font-mono text-[11px] text-amber-400/70 bg-surface rounded px-3 py-2 border border-border">pip install automaze-proof</div>
+        </a>
+        <a href="https://github.com/automazeio/proof-go" target="_blank" class="mode-card rounded-xl border border-border bg-[#111] p-5 block">
+          <div class="text-[13px] font-semibold text-zinc-200 mb-1">Go</div>
+          <div class="font-mono text-[11px] text-zinc-600 mb-3">proof-go</div>
+          <div class="font-mono text-[11px] text-amber-400/70 bg-surface rounded px-3 py-2 border border-border">go get github.com/automazeio/proof-go</div>
+        </a>
+        <div class="mode-card rounded-xl border border-border bg-[#111] p-5">
+          <div class="text-[13px] font-semibold text-zinc-200 mb-1">Any language</div>
+          <div class="font-mono text-[11px] text-zinc-600 mb-3">CLI + JSON stdin</div>
+          <div class="font-mono text-[11px] text-zinc-500 bg-surface rounded px-3 py-2 border border-border">echo '{...}' | proof --json</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── FAQ ────────────────────────────────────────────────── -->
+    <section id="faq" class="pt-16 pb-24">
+      <h2 class="text-[11px] font-semibold uppercase tracking-widest text-zinc-600 mb-3">FAQ</h2>
+      <p class="text-2xl font-semibold text-zinc-100 tracking-tight mb-10">Common questions.</p>
+
+      <div class="space-y-0 divide-y divide-border">
+        <details class="group py-5">
+          <summary class="flex items-center justify-between cursor-pointer list-none text-[14px] font-medium text-zinc-300 hover:text-zinc-100">
+            Do I need Node.js installed?
+            <svg class="transition-transform group-open:rotate-180 shrink-0 ml-4" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p class="mt-3 text-[13px] text-zinc-500 leading-relaxed">No. The CLI is a standalone binary that ships with its own runtime. Install via <code class="font-mono text-zinc-400">curl</code> or <code class="font-mono text-zinc-400">brew</code> and it works everywhere. The npm package is available as an alternative for projects that already use Node.</p>
+        </details>
+
+        <details class="group py-5">
+          <summary class="flex items-center justify-between cursor-pointer list-none text-[14px] font-medium text-zinc-300 hover:text-zinc-100">
+            Does it work in CI?
+            <svg class="transition-transform group-open:rotate-180 shrink-0 ml-4" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p class="mt-3 text-[13px] text-zinc-500 leading-relaxed">Yes. Terminal and browser modes work in any headless CI environment. Simulator mode requires a macOS runner (GitHub Actions <code class="font-mono text-zinc-400">macos-latest</code>) with Xcode or Android Studio pre-installed. All CLI output is JSON, making it easy to consume in scripts.</p>
+        </details>
+
+        <details class="group py-5">
+          <summary class="flex items-center justify-between cursor-pointer list-none text-[14px] font-medium text-zinc-300 hover:text-zinc-100">
+            What's the difference between terminal and browser mode?
+            <svg class="transition-transform group-open:rotate-180 shrink-0 ml-4" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p class="mt-3 text-[13px] text-zinc-500 leading-relaxed">Terminal mode runs any shell command and captures stdout/stderr as a replayable HTML animation. Browser mode runs a Playwright test file and captures the screen as a video. Use terminal for unit tests, integration tests, or any CLI tool. Use browser for end-to-end UI flows.</p>
+        </details>
+
+        <details class="group py-5">
+          <summary class="flex items-center justify-between cursor-pointer list-none text-[14px] font-medium text-zinc-300 hover:text-zinc-100">
+            How do tap indicators work on iOS vs Android?
+            <svg class="transition-transform group-open:rotate-180 shrink-0 ml-4" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p class="mt-3 text-[13px] text-zinc-500 leading-relaxed">On iOS, XCUITest taps are injected at the HID level and don't flow through UIKit — so no runtime overlay can intercept them. Instead, <code class="font-mono text-zinc-400">ProofTapLogger.swift</code> logs element coordinates and proof overlays indicators with ffmpeg post-processing. On Android, tap coordinates come from a JSON file your test script writes, and proof overlays them the same way.</p>
+        </details>
+
+        <details class="group py-5">
+          <summary class="flex items-center justify-between cursor-pointer list-none text-[14px] font-medium text-zinc-300 hover:text-zinc-100">
+            Is it free?
+            <svg class="transition-transform group-open:rotate-180 shrink-0 ml-4" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p class="mt-3 text-[13px] text-zinc-500 leading-relaxed">Yes. Proof is open source under the Apache 2.0 license. No accounts, no telemetry, no limits.</p>
+        </details>
+      </div>
+
+      <!-- Footer -->
+      <div class="mt-16 pt-8 border-t border-border flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-2">
+          <svg width="18" height="18" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="7" fill="#18181b"/>
+            <path d="M9 22L16 10L23 22H9Z" fill="none" stroke="#a1a1aa" stroke-width="1.5" stroke-linejoin="round"/>
+            <circle cx="16" cy="17" r="2" fill="#71717a"/>
+          </svg>
+          <span class="text-zinc-500 text-[13px]">Built by <a href="https://automaze.io" class="text-zinc-400 hover:text-zinc-200 transition-colors">Automaze</a></span>
+        </div>
+        <div class="flex items-center gap-4 text-[12px] text-zinc-600">
+          <a href="https://github.com/automazeio/proof" class="hover:text-zinc-400 transition-colors">GitHub</a>
+          <a href="https://github.com/automazeio/proof/blob/main/LICENSE" class="hover:text-zinc-400 transition-colors">Apache 2.0</a>
+          <a href="https://x.com/aroussi" class="hover:text-zinc-400 transition-colors">@aroussi</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // Copy install command
+  function copyInstall() {
+    navigator.clipboard.writeText('curl -fsSL https://automaze.io/install/proof | sh');
+    document.getElementById('copy-icon').classList.add('hidden');
+    document.getElementById('check-icon').classList.remove('hidden');
+    setTimeout(() => {
+      document.getElementById('copy-icon').classList.remove('hidden');
+      document.getElementById('check-icon').classList.add('hidden');
+    }, 1800);
+  }
+
+  function copyText(text, btn) {
+    navigator.clipboard.writeText(text);
+    const svg = btn.querySelector('svg');
+    svg.innerHTML = '<polyline points="20 6 9 17 4 12"/>';
+    setTimeout(() => {
+      svg.innerHTML = '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>';
+    }, 1800);
+  }
+
+  // Active section tracking
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('.nav-link');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === '#' + entry.target.id) {
+            link.classList.add('active');
+          }
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+
+  // Mobile sidebar
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('open');
+  }
+</script>
+
+</body>
+</html>
