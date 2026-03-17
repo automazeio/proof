@@ -7,7 +7,7 @@ import {
   assertAndroidReady,
   resolveAndroidDevice,
   startAndroidRecording,
-  pullAndMergeRecording,
+  convertToMp4,
   enableTouchIndicators,
   disableTouchIndicators,
 } from "./simulator-android";
@@ -120,10 +120,12 @@ async function captureAndroid(
   );
 
   const outputPath = join(runDir, `${filePrefix}.mp4`);
+  const webmPath = join(runDir, `${filePrefix}.webm`);
 
   enableTouchIndicators(device.serial);
 
-  const recording = startAndroidRecording(device.serial, {
+  const recordingStartTime = new Date();
+  const recording = startAndroidRecording(device.serial, webmPath, {
     bitRate: options.simulator?.bitRate,
     size: options.simulator?.size,
   });
@@ -136,7 +138,33 @@ async function captureAndroid(
     disableTouchIndicators(device.serial);
   }
 
-  pullAndMergeRecording(device.serial, recording.remoteFiles, outputPath);
+  convertToMp4(webmPath, outputPath);
+
+  // Post-process: overlay touch indicators from tap log if present
+  try {
+    const tapLog = process.env.PROOF_TAP_LOG ?? "/tmp/proof-android-taps.json";
+    if (existsSync(tapLog)) {
+      const entries = JSON.parse(require("fs").readFileSync(tapLog, "utf-8")) as Array<{
+        element: string; x: number; y: number; offsetMs: number;
+      }>;
+      if (entries.length > 0) {
+        const taps = entries.map((e) => ({
+          element: e.element,
+          timestamp: new Date(recordingStartTime.getTime() + e.offsetMs),
+          durationMs: 0,
+        }));
+        const coords = entries.map((e) => ({
+          element: e.element,
+          x: e.x,
+          y: e.y,
+          timestamp: new Date(recordingStartTime.getTime() + e.offsetMs).toISOString(),
+        }));
+        await overlayTouchIndicators(outputPath, taps, recordingStartTime, coords, 1);
+      }
+    }
+  } catch {
+    // Non-fatal
+  }
 
   if (!existsSync(outputPath)) {
     throw new Error(

@@ -48,6 +48,7 @@ export async function overlayTouchIndicators(
   taps: TapEvent[],
   recordingStartTime: Date,
   tapCoordinates?: TapCoordinate[],
+  scaleFactor?: number,
 ): Promise<void> {
   if (taps.length === 0) return;
 
@@ -58,7 +59,7 @@ export async function overlayTouchIndicators(
   }
 
   const info = getVideoInfo(videoPath);
-  const scale = guessScaleFactor(info.width);
+  const scale = scaleFactor ?? guessScaleFactor(info.width);
 
   // Build coordinate map from tap log (element name -> pixel position)
   const coordMap = new Map<string, { px: number; py: number }>();

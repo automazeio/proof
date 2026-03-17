@@ -24,7 +24,7 @@
     "build": "tsc && bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/cli.ts --outdir ./dist --target node",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "bun test",
+    "test": "bun test src/ test-app/cli/",
     "clean": "rm -rf dist"
   },
   "dependencies": {

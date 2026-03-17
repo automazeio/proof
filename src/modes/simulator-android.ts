@@ -147,118 +147,44 @@ export function resolveAndroidDevice(avdName?: string, deviceId?: string): Andro
 
 export interface AndroidRecordingHandle {
   stop: () => Promise<void>;
-  remoteFiles: string[];
+  localWebmPath: string;
 }
 
-// screenrecord has a 180s limit; we chain segments for longer recordings
-const SEGMENT_DURATION = 175;
-
+// Uses `adb emu screenrecord` which saves directly to the host filesystem.
+// `adb shell screenrecord` produces 0 frames on emulators using the gfxstream
+// graphics backend (default on Apple Silicon) because the AVC encoder can't
+// capture from a virtual display in that configuration.
 export function startAndroidRecording(
   serial: string,
+  localWebmPath: string,
   opts: { bitRate?: number; size?: string } = {},
 ): AndroidRecordingHandle {
-  const remoteFiles: string[] = [];
-  let segmentIndex = 0;
-  let stopped = false;
-  let currentProc: ChildProcess | null = null;
-  let segmentTimer: ReturnType<typeof setTimeout> | null = null;
+  const args = ["emu", "screenrecord", "start"];
+  if (opts.bitRate) args.push("--bit-rate", String(opts.bitRate));
+  if (opts.size) args.push("--size", opts.size);
+  args.push(localWebmPath);
 
-  function remotePathForSegment(i: number): string {
-    return `/sdcard/proof-recording-${i}.mp4`;
-  }
-
-  function startSegment(): void {
-    const remotePath = remotePathForSegment(segmentIndex);
-    remoteFiles.push(remotePath);
-
-    const args = ["-s", serial, "shell", "screenrecord"];
-    if (opts.bitRate) args.push("--bit-rate", String(opts.bitRate));
-    if (opts.size) args.push("--size", opts.size);
-    args.push("--time-limit", String(SEGMENT_DURATION), remotePath);
-
-    currentProc = spawn(ADB, args, { stdio: "ignore" });
-
-    currentProc.on("close", () => {
-      if (!stopped) {
-        // Natural end of segment (hit 175s limit), start next
-        segmentIndex++;
-        startSegment();
-      }
-    });
-
-    // Also chain proactively just before the limit
-    segmentTimer = setTimeout(() => {
-      if (!stopped && currentProc) {
-        segmentIndex++;
-        startSegment();
-      }
-    }, (SEGMENT_DURATION - 2) * 1000);
-  }
-
-  startSegment();
+  execSync(`"${ADB}" -s ${serial} ${args.join(" ")}`, { stdio: "ignore" });
 
   return {
-    remoteFiles,
+    localWebmPath,
     stop: () =>
       new Promise<void>((resolve) => {
-        stopped = true;
-        if (segmentTimer) clearTimeout(segmentTimer);
-        if (currentProc) {
-          currentProc.on("close", () => resolve());
-          currentProc.kill("SIGINT");
-          setTimeout(() => {
-            if (currentProc && !currentProc.killed) currentProc.kill("SIGKILL");
-            resolve();
-          }, 10_000);
-        } else {
-          resolve();
-        }
+        try {
+          execSync(`"${ADB}" -s ${serial} emu screenrecord stop`, { stdio: "ignore" });
+        } catch { /* ignore */ }
+        // Give the emulator a moment to finalize the file
+        setTimeout(resolve, 1000);
       }),
   };
 }
 
-export function pullAndMergeRecording(
-  serial: string,
-  remoteFiles: string[],
-  localOutputPath: string,
-): void {
-  if (remoteFiles.length === 0) return;
-
-  if (remoteFiles.length === 1) {
-    execSync(`"${ADB}" -s ${serial} pull "${remoteFiles[0]}" "${localOutputPath}"`, {
-      stdio: "ignore",
-    });
-    execSync(`"${ADB}" -s ${serial} shell rm -f "${remoteFiles[0]}"`, { stdio: "ignore" });
-    return;
-  }
-
-  // Pull all segments and concatenate with ffmpeg
-  const tmpDir = require("os").tmpdir();
-  const localSegments: string[] = [];
-
-  for (let i = 0; i < remoteFiles.length; i++) {
-    const localSeg = join(tmpDir, `proof-seg-${i}.mp4`);
-    localSegments.push(localSeg);
-    execSync(`"${ADB}" -s ${serial} pull "${remoteFiles[i]}" "${localSeg}"`, {
-      stdio: "ignore",
-    });
-    execSync(`"${ADB}" -s ${serial} shell rm -f "${remoteFiles[i]}"`, { stdio: "ignore" });
-  }
-
-  // Build ffmpeg concat list
-  const concatList = join(tmpDir, "proof-concat.txt");
-  const listContent = localSegments.map((f) => `file '${f}'`).join("\n");
-  require("fs").writeFileSync(concatList, listContent);
-
+export function convertToMp4(webmPath: string, mp4Path: string): void {
   execSync(
-    `ffmpeg -f concat -safe 0 -i "${concatList}" -c copy "${localOutputPath}" -y`,
+    `ffmpeg -i "${webmPath}" -c:v libx264 -preset fast -crf 23 "${mp4Path}" -y`,
     { stdio: "ignore" },
   );
-
-  for (const seg of localSegments) {
-    try { require("fs").unlinkSync(seg); } catch { /* ignore */ }
-  }
-  try { require("fs").unlinkSync(concatList); } catch { /* ignore */ }
+  try { require("fs").unlinkSync(webmPath); } catch { /* ignore */ }
 }
 
 export function enableTouchIndicators(serial: string): void {
