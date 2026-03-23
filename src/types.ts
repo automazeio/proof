@@ -27,6 +27,7 @@ export interface CaptureOptions {
   testName?: string;
   label?: string;
   mode?: RecordingMode;
+  format?: "video" | "raw";
   description?: string;
   device?: string | string[];
   viewport?: string | string[];

@@ -22,8 +22,11 @@ npm install -g @automaze/proof
 Record a terminal command, Playwright test, or mobile simulator.
 
 ```bash
-# Terminal capture
+# Terminal capture (interactive HTML player)
 proof capture --app my-app --command "pytest tests/ -v" --mode terminal
+
+# Terminal capture as MP4 video (embed in Linear / Jira)
+proof capture --app my-app --command "pytest tests/ -v" --mode terminal --format video
 
 # Browser capture
 proof capture --app my-app --test-file tests/checkout.spec.ts --mode browser
@@ -111,7 +114,7 @@ Print the installed version.
 | `--device-name <n>` | Simulator/AVD name to boot (uses running device if omitted) | No |
 | `--os <version>` | iOS version filter, e.g. `18.4` | No |
 | `--codec <codec>` | iOS recording codec: `h264` (default) or `hevc` | No |
-| `--format <fmt>` | Report format: `md`, `html`, `archive` (comma-separated for multiple) | No |
+| `--format <fmt>` | Capture: `video` or `raw` (terminal mode only; default `raw`). Report: `md`, `html`, `archive` (comma-separated for multiple) | No |
 | `--description <text>` | Human-readable description stored in manifest | No |
 
 ## JSON stdin mode

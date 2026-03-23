@@ -2,6 +2,7 @@ import { spawn } from "child_process";
 import { writeFile } from "fs/promises";
 import { join } from "path";
 import type { CaptureOptions, Recording } from "../types";
+import { renderTerminalVideo } from "./terminal-video";
 
 interface CastEvent {
   time: number;
@@ -103,6 +104,16 @@ export async function captureTerminal(
   const castDataJson = JSON.stringify(events);
   const html = buildPlayerHtml(label, cols, rows, castDataJson, realDurationSec, initialSpeed);
   await writeFile(htmlPath, html, "utf-8");
+
+  if (options.format === "video") {
+    const mp4Path = await renderTerminalVideo(htmlPath, cols, rows, duration);
+    return {
+      path: mp4Path,
+      mode: "terminal",
+      duration,
+      label,
+    };
+  }
 
   return {
     path: htmlPath,

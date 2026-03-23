@@ -9,13 +9,15 @@ description: >
   generating a markdown proof report to embed in PR descriptions or tickets; recording a
   browser test run as a self-contained HTML video to share with a PM or QA team; recording
   an iOS Simulator or Android emulator screen while XCUITest or Espresso tests run, with
-  automatic tap indicator overlays; or creating an audit trail that ties passing tests to a
+  automatic tap indicator overlays; exporting terminal recordings as MP4 video for embedding
+  inline in Linear or Jira comments; or creating an audit trail that ties passing tests to a
   specific git commit. Trigger on phrases like "attach evidence to PR", "save test output
   as artifact", "replayable test recording", "proof report", "record my test run", "share
   test results", "visual proof tests pass", "terminal recording of tests", "record iOS
-  simulator", "record Android emulator", "capture mobile tests", or whenever someone wants
-  reviewers or stakeholders to see test execution without re-running it themselves. Also
-  trigger when the user mentions proof, @automaze/proof, or automaze-proof directly.
+  simulator", "record Android emulator", "capture mobile tests", "export as video",
+  "embed in Linear", "embed in Jira", or whenever someone wants reviewers or stakeholders
+  to see test execution without re-running it themselves. Also trigger when the user mentions
+  proof, @automaze/proof, or automaze-proof directly.
 ---
 
 # proof
@@ -67,6 +69,7 @@ The CLI outputs JSON to stdout, making it ideal for agent consumption and script
 ### Terminal capture
 
 ```bash
+# Default: produces .cast + .html interactive player
 proof capture \
   --app <app-name> \
   --command "<shell command>" \
@@ -75,6 +78,15 @@ proof capture \
   --dir <output-dir> \
   --run <run-name> \
   --description "<what this captures>"
+
+# Video export: produces .mp4 for embedding in Linear / Jira comments
+proof capture \
+  --app <app-name> \
+  --command "<shell command>" \
+  --mode terminal \
+  --format video \
+  --label <label> \
+  --dir <output-dir>
 ```
 
 ### Browser capture
@@ -277,6 +289,7 @@ See [Go SDK reference](references/go.md) for full API.
 <proofDir>/<appName>/<YYYYMMDD>/<run>/
   label-HHMMSS.cast        # asciicast v2 recording
   label-HHMMSS.html        # self-contained terminal player
+  label-HHMMSS.mp4         # terminal video export (format=video only)
   label-HHMMSS.webm        # browser video (if browser mode)
   proof.json                # manifest with all entries
   report.md                 # generated report
@@ -319,6 +332,7 @@ proof report --app my-app --dir ./evidence --run full-suite --format md
 - Terminal mode requires `--command`
 - Browser mode requires `--test-file`
 - Simulator mode requires `--command` and `--platform`
+- `--format video` only applies to terminal mode; requires Playwright Chromium (`npx playwright install chromium`) and ffmpeg
 - `--app` is always required
 - CLI always outputs JSON to stdout, errors go to stderr
 - Report generation requires at least one capture in the run

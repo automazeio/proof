@@ -9,6 +9,7 @@ interface CaptureArgs {
   testName?: string;
   label?: string;
   mode?: "browser" | "terminal" | "simulator" | "auto";
+  format?: "video" | "raw";
   description?: string;
   device?: string | string[];
   viewport?: string | string[];
@@ -108,6 +109,7 @@ async function main() {
       testName: parsed.testName,
       label: parsed.label,
       mode: parsed.mode as "browser" | "terminal" | "simulator" | "auto" | undefined,
+      format: parsed.format as "video" | "raw" | undefined,
       description: parsed.description,
       device: parsed.device?.includes(",") ? parsed.device.split(",") : parsed.device,
       viewport: parsed.viewport?.includes(",") ? parsed.viewport.split(",") : parsed.viewport,
@@ -153,6 +155,7 @@ async function runFromConfig(config: CliInput) {
       testName: config.testName,
       label: config.label,
       mode: config.mode,
+      format: config.format as "video" | "raw" | undefined,
       description: config.description,
       device: config.device,
       viewport: config.viewport,
@@ -169,6 +172,7 @@ async function runFromConfig(config: CliInput) {
       testName: cap.testName,
       label: cap.label,
       mode: cap.mode,
+      format: cap.format,
       description: cap.description,
       device: cap.device,
       viewport: cap.viewport,
@@ -260,7 +264,8 @@ Options:
   --device-name <name>  iOS Simulator name (e.g. "iPhone 17 Pro")
   --os <version>        iOS version filter (e.g. "26.3")
   --codec <codec>       iOS video codec (default: h264)
-  --format <fmt>        Report format: md | html | archive (comma-separated for multiple)
+  --format <fmt>        Capture: video | raw (terminal mode only; default: raw)
+                        Report:  md | html | archive (comma-separated for multiple)
   --description <text>  Human-readable description
 
 JSON mode:

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20260323.0
+
+- **feat**: Terminal video export — add `--format video` to any terminal capture to produce an `.mp4` alongside the `.html` player. The video is rendered by a headless Chromium browser replaying the HTML player and converted to H.264 via ffmpeg. Viewport is sized to match the terminal dimensions (cols × rows) so there is no wasted whitespace. Ideal for embedding evidence inline in Linear, Jira, Notion, or Slack where `.html` files cannot be previewed.
+- **fix**: Build now marks `playwright` and `playwright-core` as external in the Bun bundler — previously the build failed with `Could not resolve: "electron"` due to Playwright's internal electron sub-module.
+
 ## 0.20260317.0
 
 - **feat**: iOS Simulator capture mode -- `--mode simulator --platform ios` records the simulator screen via `xcrun simctl io recordVideo` while running any command (typically `xcodebuild test`).

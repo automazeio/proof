@@ -115,6 +115,23 @@ describe("Proof", () => {
       expect(castContent).toContain("world");
     });
 
+    test("format=video produces .mp4 instead of .html", async () => {
+      const proof = new Proof({
+        appName: "test-app",
+        proofDir: tempDir,
+        run: "test-run",
+      });
+      const recording = await proof.capture({
+        command: "echo hello",
+        mode: "terminal",
+        format: "video",
+        label: "vid-test",
+      }) as Recording;
+      expect(recording.path).toMatch(/\.mp4$/);
+      expect(existsSync(recording.path)).toBe(true);
+      expect(existsSync(recording.path.replace(".mp4", ".html"))).toBe(true);
+    });
+
     test("throws if command is missing", async () => {
       const proof = new Proof({
         appName: "test-app",
