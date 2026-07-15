@@ -1,23 +1,19 @@
 ---
 name: proof
 description: >
-  Use proof to capture test runs as shareable, replayable evidence artifacts.
-  Invoke this skill whenever the user wants to preserve or share proof that tests passed —
-  not just run tests, but document and share the results. Works from any language:
-  standalone binary, TypeScript, Python, or Go SDKs. Key use cases: attaching terminal
-  output to a PR so reviewers can replay the test session instead of trusting a screenshot;
-  generating a markdown proof report to embed in PR descriptions or tickets; recording a
-  browser test run as a self-contained HTML video to share with a PM or QA team; recording
-  an iOS Simulator or Android emulator screen while XCUITest or Espresso tests run, with
-  automatic tap indicator overlays; exporting terminal recordings as MP4 video for embedding
-  inline in Linear or Jira comments; or creating an audit trail that ties passing tests to a
-  specific git commit. Trigger on phrases like "attach evidence to PR", "save test output
-  as artifact", "replayable test recording", "proof report", "record my test run", "share
-  test results", "visual proof tests pass", "terminal recording of tests", "record iOS
+  Capture test runs as shareable, replayable evidence artifacts — not just running
+  tests, but documenting and sharing that they passed. Works from any language:
+  standalone binary, TypeScript, Python, or Go SDKs. Use cases: attach replayable
+  terminal output to a PR instead of a screenshot; generate a markdown proof report for
+  PR descriptions or tickets; record a browser test as a self-contained HTML video;
+  record an iOS Simulator or Android emulator screen during XCUITest or Espresso runs,
+  with automatic tap indicator overlays; export terminal recordings as MP4 for inline
+  embedding in Linear or Jira; or tie passing tests to a git commit as an audit trail.
+  Trigger on phrases like "attach evidence to PR", "save test output as artifact",
+  "replayable test recording", "proof report", "record my test run", "record iOS
   simulator", "record Android emulator", "capture mobile tests", "export as video",
-  "embed in Linear", "embed in Jira", or whenever someone wants reviewers or stakeholders
-  to see test execution without re-running it themselves. Also trigger when the user mentions
-  proof, @automaze/proof, or automaze-proof directly.
+  "embed in Linear", "embed in Jira", or when the user mentions proof, @automaze/proof,
+  or automaze-proof directly.
 ---
 
 # proof
