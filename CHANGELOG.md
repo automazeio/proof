@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20260715.0
+
+- **fix**: `proof --version` (and any packaged run) crashed on every non-CI machine because Bun's bundler inlined `__dirname` as the build machine's absolute path (`/home/runner/work/proof/proof/src`), which does not exist elsewhere. The version is now injected at build time via a `__PROOF_VERSION__` define for both the npm bundle and the standalone compiled binary (the compiled binary has no `package.json` on disk to read), with a runtime `import.meta.url` fallback for unbundled dev runs. Added a `--version` regression test.
+
 ## 0.20260323.0
 
 - **feat**: Terminal video export — add `--format video` to any terminal capture to produce an `.mp4` alongside the `.html` player. The video is rendered by a headless Chromium browser replaying the HTML player and converted to H.264 via ffmpeg. Viewport is sized to match the terminal dimensions (cols × rows) so there is no wasted whitespace. Ideal for embedding evidence inline in Linear, Jira, Notion, or Slack where `.html` files cannot be previewed.

@@ -48,6 +48,13 @@ describe("CLI", () => {
       expect(exitCode).toBe(0);
       expect(stdout).toContain("@automaze/proof");
     });
+
+    test("prints version with --version", async () => {
+      const pkg = JSON.parse(await readFile(join(import.meta.dir, "../package.json"), "utf-8"));
+      const { stdout, exitCode } = await runCli(["--version"]);
+      expect(exitCode).toBe(0);
+      expect(stdout).toBe(pkg.version);
+    });
   });
 
   describe("arg validation", () => {

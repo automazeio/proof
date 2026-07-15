@@ -2,6 +2,21 @@
 import { Proof } from "./index";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
+import { fileURLToPath } from "url";
+
+// Injected at build time via bun's --define so the version survives bundling and
+// standalone compilation (a bundled __dirname is inlined to the build machine's
+// path, and the compiled binary has no package.json on disk to read).
+declare const __PROOF_VERSION__: string | undefined;
+
+async function resolveVersion(): Promise<string> {
+  if (typeof __PROOF_VERSION__ !== "undefined") return __PROOF_VERSION__;
+  // Dev fallback (unbundled `bun run src/cli.ts`): resolve relative to this module
+  // at runtime rather than a build-time-inlined __dirname.
+  const here = fileURLToPath(new URL(".", import.meta.url));
+  const pkg = JSON.parse(await readFile(resolve(here, "../package.json"), "utf-8"));
+  return pkg.version;
+}
 
 interface CaptureArgs {
   command?: string;
@@ -62,8 +77,7 @@ async function main() {
   }
 
   if (args.includes("--version") || args.includes("-v")) {
-    const pkg = JSON.parse(await readFile(resolve(__dirname, "../package.json"), "utf-8"));
-    console.log(pkg.version);
+    console.log(await resolveVersion());
     process.exit(0);
   }
 

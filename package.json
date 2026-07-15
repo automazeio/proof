@@ -1,6 +1,6 @@
 {
   "name": "@automaze/proof",
-  "version": "0.20260311.0",
+  "version": "0.20260715.0",
   "description": "Visual proof of work for automated code changes",
   "type": "module",
   "main": "dist/index.js",
@@ -21,7 +21,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc && bun build ./src/index.ts --outdir ./dist --target node --external playwright --external playwright-core && bun build ./src/cli.ts --outdir ./dist --target node --external playwright --external playwright-core",
+    "build": "tsc && bun run scripts/build.ts",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "test": "bun test src/ test-app/cli/",
