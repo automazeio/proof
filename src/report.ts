@@ -38,6 +38,34 @@ function modeIcon(mode: string): string {
   return mode === "browser" ? "🌐" : "🖥";
 }
 
+type Verdict = "pass" | "fail" | "unknown";
+
+// Entries written before exitCode existed have no code — treat as "unknown"
+// (rendered "—"), never as a failure.
+function entryStatus(entry: ProofEntry): Verdict {
+  if (typeof entry.exitCode !== "number") return "unknown";
+  return entry.exitCode === 0 ? "pass" : "fail";
+}
+
+function entryStatusLabel(entry: ProofEntry): string {
+  switch (entryStatus(entry)) {
+    case "pass": return "✅ Pass";
+    case "fail": return `❌ Fail (exit ${entry.exitCode})`;
+    default: return "—";
+  }
+}
+
+function overallVerdict(entries: ProofEntry[]): { status: Verdict; failCount: number; passCount: number } {
+  const coded = entries.filter((e) => typeof e.exitCode === "number");
+  if (coded.length === 0) return { status: "unknown", failCount: 0, passCount: 0 };
+  const failCount = coded.filter((e) => e.exitCode !== 0).length;
+  return {
+    status: failCount > 0 ? "fail" : "pass",
+    failCount,
+    passCount: coded.length - failCount,
+  };
+}
+
 // --- Markdown ---
 
 function generateMd(manifest: ProofManifest, runDir: string): Promise<string> {
@@ -46,6 +74,13 @@ function generateMd(manifest: ProofManifest, runDir: string): Promise<string> {
 
   lines.push(`# Proof Report`);
   lines.push(``);
+  const verdict = overallVerdict(manifest.entries);
+  const verdictLine =
+    verdict.status === "pass" ? `✅ All passed (${verdict.passCount}/${verdict.passCount})` :
+    verdict.status === "fail" ? `❌ ${verdict.failCount} failed (${verdict.passCount}/${verdict.passCount + verdict.failCount} passed)` :
+    "—";
+
+  lines.push(`**Status:** ${verdictLine}`);
   lines.push(`**App:** ${manifest.appName}`);
   lines.push(`**Run:** ${manifest.run}`);
   lines.push(`**Date:** ${formatDate(manifest.createdAt)}`);
@@ -56,11 +91,11 @@ function generateMd(manifest: ProofManifest, runDir: string): Promise<string> {
   }
   lines.push(``);
 
-  lines.push(`| # | Label | Mode | Duration | Artifact |`);
-  lines.push(`|---|-------|------|----------|----------|`);
+  lines.push(`| # | Label | Mode | Status | Duration | Artifact |`);
+  lines.push(`|---|-------|------|--------|----------|----------|`);
   manifest.entries.forEach((entry, i) => {
     const label = entry.label ?? entry.mode;
-    lines.push(`| ${i + 1} | ${modeIcon(entry.mode)} ${label} | ${entry.mode} | ${formatDuration(entry.duration)} | [${entry.artifact}](./${entry.artifact}) |`);
+    lines.push(`| ${i + 1} | ${modeIcon(entry.mode)} ${label} | ${entry.mode} | ${entryStatusLabel(entry)} | ${formatDuration(entry.duration)} | [${entry.artifact}](./${entry.artifact}) |`);
   });
   lines.push(``);
   lines.push(`---`);
@@ -71,6 +106,7 @@ function generateMd(manifest: ProofManifest, runDir: string): Promise<string> {
     lines.push(``);
     lines.push(`${entry.description}`);
     lines.push(``);
+    lines.push(`- **Status:** ${entryStatusLabel(entry)}`);
     lines.push(`- **Time:** ${formatTime(entry.timestamp)}`);
     lines.push(`- **Duration:** ${formatDuration(entry.duration)}`);
     if (entry.command) lines.push(`- **Command:** \`${entry.command}\``);
@@ -99,6 +135,8 @@ async function generateHtml(
   const terminalCount = manifest.entries.filter(e => e.mode === "terminal").length;
   const browserCount = manifest.entries.filter(e => e.mode === "browser").length;
 
+  const verdict = overallVerdict(manifest.entries);
+
   const sections: string[] = [];
   for (const entry of manifest.entries) {
     const mediaHtml = await buildMediaEmbed(entry, runDir, inline);
@@ -108,6 +146,11 @@ async function generateHtml(
       ? "text-green-800 bg-emerald-100/80"
       : "text-blue-800 bg-sky-100";
     const modeLabel = isTerminal ? "Terminal" : "Browser";
+    const status = entryStatus(entry);
+    const statusBadge =
+      status === "pass" ? `<span class="rounded text-green-800 bg-emerald-100/80 px-2 py-0.5 text-sm">✅ Pass</span>` :
+      status === "fail" ? `<span class="rounded text-red-800 bg-red-100 px-2 py-0.5 text-sm">❌ Fail (exit ${entry.exitCode})</span>` :
+      `<span class="rounded text-neutral-500 bg-neutral-100 px-2 py-0.5 text-sm">—</span>`;
 
     let sourceHtml = "";
     if (entry.command) {
@@ -126,6 +169,7 @@ async function generateHtml(
           <h2 class="text-2xl mb-2">${esc(label)}</h2>
           <div class="flex items-center space-x-4 subpixel-antialiased">
             <span class="rounded ${badgeClass} px-2 py-0.5 text-sm">${modeLabel}</span>
+            ${statusBadge}
             <time class="font-mono text-[13px]">${formatTime(entry.timestamp)} (${formatDuration(entry.duration)})</time>
           </div>
           <p class="opacity-80 my-4">${esc(entry.description)}</p>
@@ -141,7 +185,13 @@ async function generateHtml(
     ? `<p class="max-w-2xl leading-relaxed opacity-80">${esc(manifest.description)}</p>`
     : "";
 
+  const verdictBadge =
+    verdict.status === "pass" ? `<span class="whitespace-nowrap rounded font-medium text-green-800 bg-emerald-100/80 px-2 py-0.5 text-sm">✅ All passed</span>` :
+    verdict.status === "fail" ? `<span class="whitespace-nowrap rounded font-medium text-red-800 bg-red-100 px-2 py-0.5 text-sm">❌ ${verdict.failCount} failed</span>` :
+    "";
+
   const badgesHtml = [
+    verdictBadge,
     terminalCount > 0 ? `<span class="whitespace-nowrap rounded font-medium text-green-800 bg-emerald-100/80 px-2 py-0.5 text-sm">${terminalCount} Terminal</span>` : "",
     browserCount > 0 ? `<span class="whitespace-nowrap rounded font-medium text-blue-800 bg-sky-100 px-2 py-0.5 text-sm">${browserCount} Browser</span>` : "",
   ].filter(Boolean).join("\n        ");

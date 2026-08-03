@@ -205,7 +205,12 @@ proof capture --app my-app --test-file tests/checkout.spec.ts --mode browser --v
 
 # Generate report
 proof report --app my-app --format html
+
+# Gate a pipeline on the wrapped command: exit with its code instead of 0
+proof capture --app my-app --command "npm test" --mode terminal --fail-on-error
 ```
+
+By default `proof capture` exits `0` even when the wrapped command fails (capturing evidence is separate from the command passing). Pass `--fail-on-error` (or set `PROOF_FAIL_ON_ERROR=1`) to propagate the wrapped command's exit code — handy in pre-push hooks and CI gates.
 
 For automation, pipe JSON to stdin for multi-capture runs:
 
@@ -256,11 +261,12 @@ const recording = await proof.capture({
 });
 
 recording.path      // absolute path to artifact
-recording.mode      // "browser" | "terminal"
+recording.mode      // "browser" | "terminal" | "simulator"
 recording.duration  // ms
+recording.exitCode  // exit code of the wrapped command (0 = success)
 ```
 
-When `device` or `viewport` is an array, `capture()` returns `Recording[]` instead of a single `Recording`.
+`capture()` always records the run and returns the `Recording` even when the wrapped command fails — check `recording.exitCode` to gate on the result. When `device` or `viewport` is an array, `capture()` returns `Recording[]` instead of a single `Recording`.
 
 ### `proof.report()`
 
@@ -283,6 +289,7 @@ evidence/my-app/20260312/deploy-v2/
 |----------|-------------|
 | `PROOF_DIR` | Override default proof directory |
 | `PROOF_MODE` | Override auto-detection (`browser` or `terminal`) |
+| `PROOF_FAIL_ON_ERROR` | Set to `1` to exit with the wrapped command's exit code (same as `--fail-on-error`) |
 
 ## Simulator mode
 

@@ -44,6 +44,7 @@ interface CliInput {
   appName: string;
   proofDir?: string;
   run?: string;
+  failOnError?: boolean;
   format?: string | string[];
   browser?: { viewport?: { width: number; height: number } };
   terminal?: { cols?: number; rows?: number };
@@ -118,6 +119,7 @@ async function main() {
       appName: parsed.appName,
       proofDir: parsed.proofDir,
       run: parsed.run,
+      failOnError: parsed.failOnError === "true",
       command: parsed.command,
       testFile: parsed.testFile,
       testName: parsed.testName,
@@ -200,6 +202,7 @@ async function runFromConfig(config: CliInput) {
         mode: recording.mode,
         duration: recording.duration,
         label: recording.label,
+        exitCode: recording.exitCode,
       });
     }
   }
@@ -211,6 +214,21 @@ async function runFromConfig(config: CliInput) {
     recordings: results,
   };
   console.log(JSON.stringify(output));
+
+  // Opt-in: propagate the wrapped command's exit code. Default stays 0 —
+  // "capture succeeded" and "the wrapped command succeeded" are different things.
+  // In multi-capture mode we exit with the first non-zero code, but only after
+  // the full JSON above has been emitted for every capture.
+  const failOnError = config.failOnError === true || process.env.PROOF_FAIL_ON_ERROR === "1";
+  if (failOnError) {
+    const firstFailure = results.find(
+      (r) => typeof r.exitCode === "number" && r.exitCode !== 0,
+    );
+    if (firstFailure && typeof firstFailure.exitCode === "number") {
+      // Set exitCode rather than process.exit() so buffered stdout flushes.
+      process.exitCode = firstFailure.exitCode;
+    }
+  }
 }
 
 function parseArgs(args: string[]): Record<string, string | undefined> {
@@ -235,6 +253,11 @@ function parseArgs(args: string[]): Record<string, string | undefined> {
   };
 
   for (let i = 0; i < args.length; i++) {
+    // Boolean flags (no value consumed)
+    if (args[i] === "--fail-on-error") {
+      result.failOnError = "true";
+      continue;
+    }
     const key = map[args[i]];
     if (key && i + 1 < args.length) {
       result[key] = args[++i];
@@ -280,6 +303,9 @@ Options:
   --codec <codec>       iOS video codec (default: h264)
   --format <fmt>        Capture: video | raw (terminal mode only; default: raw)
                         Report:  md | html | archive (comma-separated for multiple)
+  --fail-on-error       Exit with the wrapped command's exit code instead of 0
+                        (also enabled via PROOF_FAIL_ON_ERROR=1). Default: exit 0
+                        even when the wrapped command fails.
   --description <text>  Human-readable description
 
 JSON mode:

@@ -206,6 +206,7 @@ export class Proof {
       device: singleDevice,
       viewport: singleViewport,
       platform: options.platform,
+      exitCode: recording.exitCode,
     };
 
     await this.appendToManifest(entry);

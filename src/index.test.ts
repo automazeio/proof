@@ -130,7 +130,8 @@ describe("Proof", () => {
       expect(recording.path).toMatch(/\.mp4$/);
       expect(existsSync(recording.path)).toBe(true);
       expect(existsSync(recording.path.replace(".mp4", ".html"))).toBe(true);
-    });
+      expect(recording.exitCode).toBe(0);
+    }, 30000);
 
     test("throws if command is missing", async () => {
       const proof = new Proof({

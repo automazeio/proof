@@ -190,11 +190,27 @@ await proof.capture({
 ```typescript
 interface Recording {
   path: string;           // Absolute path to the artifact
-  mode: "browser" | "terminal";
+  mode: "browser" | "terminal" | "simulator";
   duration: number;       // Duration in milliseconds
   label?: string;
+  exitCode: number;       // Exit code of the wrapped command (0 = success)
 }
 ```
+
+### Gating on the result
+
+`capture()` always records the run and returns the `Recording` — it never throws just because the wrapped command failed. Inspect `exitCode` to gate:
+
+```typescript
+const recording = await proof.capture({ command: "npm test", mode: "terminal" });
+await proof.report();
+
+if (recording.exitCode !== 0) {
+  process.exit(recording.exitCode); // fail the pipeline, keep the evidence
+}
+```
+
+A signal-kill or spawn failure is normalized to a non-zero code, so `exitCode === 0` reliably means success.
 
 ## Manifest
 
@@ -215,11 +231,14 @@ Each run produces a `proof.json`:
       "command": "pytest tests/ -v",
       "duration": 1200,
       "artifact": "api-tests-143012.html",
-      "description": "API integration test suite"
+      "description": "API integration test suite",
+      "exitCode": 0
     }
   ]
 }
 ```
+
+`exitCode` is optional in the manifest schema — runs captured before this field existed omit it, and readers treat a missing value as "unknown" (never a failure).
 
 ## Error handling
 
@@ -239,4 +258,4 @@ await proof.report();
 // Error: No proof.json found — run capture() first
 ```
 
-If a captured command exits with a non-zero code, proof still records the output (including the error) and returns the recording. The exit code is not surfaced as an exception -- you get the evidence either way.
+If a captured command exits with a non-zero code, proof still records the output (including the error) and returns the recording. The exit code is not surfaced as an exception -- you get the evidence either way, and the code is available on `recording.exitCode` (see [Gating on the result](#gating-on-the-result)).
