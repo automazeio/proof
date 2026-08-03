@@ -7,12 +7,16 @@ import { existsSync } from "fs";
 const CLI_PATH = join(import.meta.dir, "cli.ts");
 const TEST_APP_DIR = join(import.meta.dir, "../test-app");
 
-async function runCli(args: string[], stdin?: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCli(
+  args: string[],
+  stdin?: string,
+  extraEnv?: Record<string, string>,
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const proc = Bun.spawn(["bun", "run", CLI_PATH, ...args], {
     stdin: stdin ? new Blob([stdin]) : undefined,
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...process.env, FORCE_COLOR: "0" },
+    env: { ...process.env, FORCE_COLOR: "0", ...extraEnv },
   });
 
   const [stdout, stderr] = await Promise.all([
@@ -425,6 +429,143 @@ describe("CLI", () => {
       const { stderr, exitCode } = await runCli(["--json"], input);
       expect(exitCode).toBe(1);
       expect(JSON.parse(stderr).error).toContain("No proof.json found");
+    });
+  });
+
+  describe("exit code propagation", () => {
+    const FAILING_APP = `bun run ${join(TEST_APP_DIR, "cli/app.ts")} nope`;
+
+    test("records the wrapped command's exit code and still exits 0 by default", async () => {
+      const { stdout, exitCode } = await runCli([
+        "capture",
+        "--app", "exit-default",
+        "--dir", tempDir,
+        "--run", "e1",
+        "--command", FAILING_APP,
+        "--mode", "terminal",
+        "--label", "failing",
+      ]);
+      // Capture succeeded even though the wrapped command failed.
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(stdout);
+      expect(result.recordings[0].exitCode).toBe(1);
+    });
+
+    test("records exitCode 0 for a passing command", async () => {
+      const { stdout, exitCode } = await runCli([
+        "capture",
+        "--app", "exit-ok",
+        "--dir", tempDir,
+        "--run", "e2",
+        "--command", "echo ok",
+        "--mode", "terminal",
+      ]);
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(stdout);
+      expect(result.recordings[0].exitCode).toBe(0);
+    });
+
+    test("--fail-on-error propagates the exact non-zero exit code", async () => {
+      const { stdout, exitCode } = await runCli([
+        "capture",
+        "--app", "exit-fail",
+        "--dir", tempDir,
+        "--run", "e3",
+        "--command", "echo boom; exit 3",
+        "--mode", "terminal",
+        "--fail-on-error",
+      ]);
+      expect(exitCode).toBe(3);
+      // Full JSON is still emitted before exiting non-zero.
+      const result = JSON.parse(stdout);
+      expect(result.recordings[0].exitCode).toBe(3);
+    });
+
+    test("--fail-on-error still exits 0 when the command passes", async () => {
+      const { exitCode } = await runCli([
+        "capture",
+        "--app", "exit-fail-ok",
+        "--dir", tempDir,
+        "--run", "e4",
+        "--command", "echo fine",
+        "--mode", "terminal",
+        "--fail-on-error",
+      ]);
+      expect(exitCode).toBe(0);
+    });
+
+    test("PROOF_FAIL_ON_ERROR=1 env var propagates the exit code", async () => {
+      const { exitCode } = await runCli([
+        "capture",
+        "--app", "exit-env",
+        "--dir", tempDir,
+        "--run", "e5",
+        "--command", "exit 7",
+        "--mode", "terminal",
+      ], undefined, { PROOF_FAIL_ON_ERROR: "1" });
+      expect(exitCode).toBe(7);
+    });
+
+    test("proof.json persists the exit code", async () => {
+      await runCli([
+        "capture",
+        "--app", "exit-manifest",
+        "--dir", tempDir,
+        "--run", "e6",
+        "--command", "echo boom; exit 2",
+        "--mode", "terminal",
+      ]);
+      const manifestPath = join(
+        tempDir, "exit-manifest",
+        new Date().toISOString().slice(0, 10).replace(/-/g, ""),
+        "e6", "proof.json",
+      );
+      const manifest = JSON.parse(await readFile(manifestPath, "utf-8"));
+      expect(manifest.entries[0].exitCode).toBe(2);
+    });
+
+    test("report renders pass/fail status and an overall verdict", async () => {
+      await runCli([
+        "capture",
+        "--app", "exit-report",
+        "--dir", tempDir,
+        "--run", "e7",
+        "--command", "echo boom; exit 5",
+        "--mode", "terminal",
+      ]);
+      const { stdout, exitCode } = await runCli([
+        "report",
+        "--app", "exit-report",
+        "--dir", tempDir,
+        "--run", "e7",
+      ]);
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(stdout);
+      const md = await readFile(result.paths[0], "utf-8");
+      expect(md).toContain("**Status:**");
+      expect(md).toContain("❌");
+      expect(md).toContain("exit 5");
+    });
+
+    test("JSON multi-capture exits with the first non-zero code and emits all recordings", async () => {
+      const input = JSON.stringify({
+        action: "capture",
+        appName: "exit-multi",
+        proofDir: tempDir,
+        run: "e8",
+        failOnError: true,
+        captures: [
+          { command: "echo one", mode: "terminal", label: "ok" },
+          { command: "echo two; exit 4", mode: "terminal", label: "fail-a" },
+          { command: "echo three; exit 9", mode: "terminal", label: "fail-b" },
+        ],
+      });
+      const { stdout, exitCode } = await runCli(["--json"], input);
+      // First non-zero code wins.
+      expect(exitCode).toBe(4);
+      const result = JSON.parse(stdout);
+      expect(result.recordings).toHaveLength(3);
+      expect(result.recordings.map((r: any) => r.exitCode)).toEqual([0, 4, 9]);
     });
   });
 });

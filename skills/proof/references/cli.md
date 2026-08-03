@@ -65,11 +65,14 @@ Output (JSON to stdout):
       "path": "/abs/path/unit-tests-143012.html",
       "mode": "terminal",
       "duration": 1200,
-      "label": "unit-tests"
+      "label": "unit-tests",
+      "exitCode": 0
     }
   ]
 }
 ```
+
+`exitCode` is the wrapped command's exit code (`0` = success), always present. By default the CLI exits `0` regardless; pass `--fail-on-error` to propagate it (see [Gating on results](#gating-on-results)).
 
 ### `proof report`
 
@@ -110,6 +113,7 @@ Print the installed version.
 | `--test-name <name>` | Specific test name filter (Playwright `-g`) | No |
 | `--label <label>` | Artifact filename prefix | No |
 | `--mode <mode>` | `browser`, `terminal`, `simulator`, or `auto` | No |
+| `--fail-on-error` | Exit with the wrapped command's exit code instead of `0` | No |
 | `--platform <p>` | `ios` or `android` | Yes (simulator mode) |
 | `--device-name <n>` | Simulator/AVD name to boot (uses running device if omitted) | No |
 | `--os <version>` | iOS version filter, e.g. `18.4` | No |
@@ -143,12 +147,14 @@ Output:
   "appName": "my-app",
   "run": "nightly",
   "recordings": [
-    { "path": "...", "mode": "terminal", "duration": 800, "label": "python" },
-    { "path": "...", "mode": "terminal", "duration": 1200, "label": "go" },
-    { "path": "...", "mode": "terminal", "duration": 3400, "label": "rust" }
+    { "path": "...", "mode": "terminal", "duration": 800, "label": "python", "exitCode": 0 },
+    { "path": "...", "mode": "terminal", "duration": 1200, "label": "go", "exitCode": 1 },
+    { "path": "...", "mode": "terminal", "duration": 3400, "label": "rust", "exitCode": 0 }
   ]
 }
 ```
+
+Add `"failOnError": true` at the top level to propagate exit codes; in multi-capture mode the CLI exits with the first non-zero code after emitting the full JSON.
 
 ### JSON input format
 
@@ -236,15 +242,29 @@ proof report --app "$APP" --dir "$DIR" --run "$RUN"
 echo "Evidence saved to $DIR/$APP/*/$RUN/"
 ```
 
+## Gating on results
+
+`proof capture` exits `0` by default even when the wrapped command fails — capturing evidence is independent of the tests passing, so proof never changes a pipeline's outcome unless asked. Read each recording's `exitCode` to know whether the command passed.
+
+To make proof exit with the wrapped command's code (pre-push hooks, CI gates), opt in:
+
+```bash
+proof capture --app my-app --command "npm test" --mode terminal --fail-on-error
+# or, when you can't edit the flags:
+PROOF_FAIL_ON_ERROR=1 proof capture --app my-app --command "npm test" --mode terminal
+```
+
+In JSON stdin mode set `"failOnError": true`. The CLI prints the full JSON for every capture, then exits with the first non-zero code. This supersedes the old `--command "npm test; echo $? > .status"` sentinel-file workaround.
+
 ## Error handling
 
-Errors are output as JSON to stderr:
+Errors (bad input, missing manifest, spawn failure) are output as JSON to stderr:
 
 ```json
 { "error": "No proof.json found — run capture() first" }
 ```
 
-Exit code is `1` on error, `0` on success.
+The CLI exit code is `1` on a *proof error* and `0` on success. This is distinct from the *wrapped command's* exit code, which is reported per-recording as `exitCode` and only affects the process exit when `--fail-on-error` / `PROOF_FAIL_ON_ERROR=1` is set.
 
 ## Environment variables
 
@@ -252,4 +272,5 @@ Exit code is `1` on error, `0` on success.
 |----------|-------------|
 | `PROOF_DIR` | Override default proof directory (same as `--dir`) |
 | `PROOF_MODE` | Override auto-detection (`browser` or `terminal`) |
+| `PROOF_FAIL_ON_ERROR` | Set to `1` to exit with the wrapped command's exit code (same as `--fail-on-error`) |
 | `PROOF_TAP_LOG` | Path to Android tap log JSON (default: `/tmp/proof-android-taps.json`) |

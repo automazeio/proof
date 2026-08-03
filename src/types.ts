@@ -19,6 +19,12 @@ export interface Recording {
   mode: Exclude<RecordingMode, "auto">;
   duration: number;
   label?: string;
+  /**
+   * Exit code of the wrapped command / test process. `0` means success;
+   * any non-zero value (including a normalized `1` for signal-kills or spawn
+   * failures) means the wrapped command failed. Always populated.
+   */
+  exitCode: number;
 }
 
 export interface CaptureOptions {
@@ -55,6 +61,12 @@ export interface ProofEntry {
   device?: string;
   viewport?: string;
   platform?: "ios" | "android";
+  /**
+   * Exit code of the wrapped command. Optional so manifests written before
+   * this field existed still parse; readers treat a missing value as "unknown"
+   * (rendered as "—"), never as a failure.
+   */
+  exitCode?: number;
 }
 
 export interface ProofManifest {

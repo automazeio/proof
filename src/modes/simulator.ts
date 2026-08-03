@@ -53,7 +53,9 @@ export async function captureSimulator(
     options.simulator?.codec,
   );
 
-  await runCommand(options.command);
+  // Capture the exit code but let the recording lifecycle (stop + post-process)
+  // complete regardless of whether the wrapped command failed.
+  const cmdExitCode = await runCommand(options.command);
   await sleep(500);
   await recording.stop();
 
@@ -103,6 +105,7 @@ export async function captureSimulator(
     mode: "simulator",
     duration,
     label,
+    exitCode: cmdExitCode,
   };
 }
 
@@ -130,8 +133,11 @@ async function captureAndroid(
     size: options.simulator?.size,
   });
 
+  // Default to a failure code so an interrupted run before `runCommand`
+  // resolves is never reported as a success.
+  let cmdExitCode = 1;
   try {
-    await runCommand(options.command);
+    cmdExitCode = await runCommand(options.command);
     await sleep(500);
   } finally {
     await recording.stop();
@@ -193,6 +199,7 @@ async function captureAndroid(
     mode: "simulator",
     duration,
     label,
+    exitCode: cmdExitCode,
   };
 }
 

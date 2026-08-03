@@ -45,10 +45,11 @@ rec = p.capture(
     description="API integration test suite",
 )
 
-print(rec.path)      # /abs/path/api-tests-143012.html
-print(rec.mode)      # "terminal"
-print(rec.duration)  # 1200 (ms)
-print(rec.label)     # "api-tests"
+print(rec.path)       # /abs/path/api-tests-143012.html
+print(rec.mode)       # "terminal"
+print(rec.duration)   # 1200 (ms)
+print(rec.label)      # "api-tests"
+print(rec.exit_code)  # 0 (exit code of the wrapped command; non-zero = failure)
 ```
 
 Works with any command: `pytest`, `go test`, `cargo test`, `npm test`, `make check`.
@@ -124,10 +125,12 @@ def test_main(proof_session):
 ```python
 @dataclass
 class Recording:
-    path: str           # Absolute path to artifact
-    mode: str           # "terminal" or "browser"
-    duration: int       # Duration in milliseconds
-    label: str | None   # Filename prefix
+    path: str               # Absolute path to artifact
+    mode: str               # "terminal", "browser", or "simulator"
+    duration: int           # Duration in milliseconds
+    label: str | None       # Filename prefix
+    exit_code: int | None   # Wrapped command's exit code (0 = success;
+                            # None only from a proof CLI predating this field)
 ```
 
 ## Capture options
@@ -169,4 +172,11 @@ except RuntimeError as e:
     print(e)  # "No proof.json found"
 ```
 
-If a captured command exits non-zero, proof still records the output and returns the recording.
+If a captured command exits non-zero, proof still records the output and returns the recording — the failure is not raised as an exception. Gate on it via `rec.exit_code`:
+
+```python
+rec = p.capture(command="pytest tests/ -v", mode="terminal")
+p.report()
+if rec.exit_code != 0:
+    raise SystemExit(rec.exit_code)  # fail the run, keep the evidence
+```

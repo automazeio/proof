@@ -181,11 +181,27 @@ echo '{
       "path": "/absolute/path/to/unit-143012.html",
       "mode": "terminal",
       "duration": 1200,
-      "label": "unit"
+      "label": "unit",
+      "exitCode": 0
     }
   ]
 }
 ```
+
+`exitCode` is the wrapped command's exit code (`0` = success). It is always present.
+
+### Gating on test results (exit codes)
+
+By default `proof capture` exits `0` even when the wrapped command fails — capturing evidence is separate from the tests passing, so dropping proof into a pipeline never changes its outcome. Read `exitCode` from the JSON to know whether the tests actually passed.
+
+To make proof itself fail when the wrapped command fails (pre-push hooks, CI gates), opt in with `--fail-on-error` or `PROOF_FAIL_ON_ERROR=1`:
+
+```bash
+# Exits with npm test's exit code instead of 0
+proof capture --app my-app --command "npm test" --mode terminal --fail-on-error
+```
+
+In JSON multi-capture mode, set `"failOnError": true`; the CLI emits the full JSON for every capture, then exits with the first non-zero code. This replaces the old `--command "npm test; echo $? > .status"` sentinel-file hack.
 
 ## TypeScript SDK
 
@@ -323,6 +339,14 @@ echo '{
 proof report --app my-app --dir ./evidence --run full-suite --format md
 ```
 
+### Gate a commit or CI step on test results
+
+```bash
+# Records evidence AND fails (non-zero exit) if the tests fail
+proof capture --app my-app --command "npm test" --mode terminal \
+  --label tests --dir ./evidence --fail-on-error
+```
+
 ## Key constraints
 
 - Terminal mode requires `--command`
@@ -330,6 +354,7 @@ proof report --app my-app --dir ./evidence --run full-suite --format md
 - Simulator mode requires `--command` and `--platform`
 - `--format video` only applies to terminal mode; requires Playwright Chromium (`npx playwright install chromium`) and ffmpeg
 - `--app` is always required
+- `proof capture` exits `0` by default even if the wrapped command fails; the command's real exit code is in each recording's `exitCode`. Use `--fail-on-error` (or `PROOF_FAIL_ON_ERROR=1`) to propagate it to the process exit code
 - CLI always outputs JSON to stdout, errors go to stderr
 - Report generation requires at least one capture in the run
 - Simulator mode requires the simulator/emulator to be installed locally -- proof does not download or provision them

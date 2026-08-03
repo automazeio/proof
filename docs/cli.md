@@ -46,11 +46,14 @@ Output (JSON to stdout):
       "path": "/abs/path/unit-tests-143012.html",
       "mode": "terminal",
       "duration": 1200,
-      "label": "unit-tests"
+      "label": "unit-tests",
+      "exitCode": 0
     }
   ]
 }
 ```
+
+`exitCode` is the exit code of the wrapped command (`0` = success, non-zero = failure). It is always present. By default `proof capture` exits `0` even when the wrapped command fails — capturing evidence succeeded, which is distinct from the command passing. To make the CLI exit with the wrapped command's code instead, use `--fail-on-error` (see [Gating on results](#gating-on-results)).
 
 ### `proof report`
 
@@ -89,6 +92,7 @@ Print the installed version.
 | `--test-name <name>` | Specific test name filter (Playwright `-g`) | No |
 | `--label <label>` | Artifact filename prefix | No |
 | `--mode <mode>` | `browser`, `terminal`, or `auto` | No |
+| `--fail-on-error` | Exit with the wrapped command's exit code instead of `0` | No |
 | `--description <text>` | Human-readable description stored in manifest | No |
 
 ## JSON stdin mode
@@ -117,12 +121,14 @@ Output:
   "appName": "my-app",
   "run": "nightly",
   "recordings": [
-    { "path": "...", "mode": "terminal", "duration": 800, "label": "python" },
-    { "path": "...", "mode": "terminal", "duration": 1200, "label": "go" },
-    { "path": "...", "mode": "terminal", "duration": 3400, "label": "rust" }
+    { "path": "...", "mode": "terminal", "duration": 800, "label": "python", "exitCode": 0 },
+    { "path": "...", "mode": "terminal", "duration": 1200, "label": "go", "exitCode": 1 },
+    { "path": "...", "mode": "terminal", "duration": 3400, "label": "rust", "exitCode": 0 }
   ]
 }
 ```
+
+Set `"failOnError": true` at the top level of the JSON to opt into exit-code propagation. In multi-capture mode the CLI emits the full JSON for every capture, then exits with the **first** non-zero code encountered (here, `1`).
 
 ### JSON input format
 
@@ -209,15 +215,33 @@ proof report --app "$APP" --dir "$DIR" --run "$RUN"
 echo "Evidence saved to $DIR/$APP/*/$RUN/"
 ```
 
+## Gating on results
+
+By default, `proof capture` exits `0` as long as the capture itself succeeded — even if the wrapped command failed its tests. This keeps proof non-intrusive: dropping it into a pipeline never changes the pipeline's pass/fail outcome.
+
+When you want proof to *gate* on the wrapped command (a pre-push hook, a CI step that must fail when tests fail), opt in:
+
+```bash
+# Flag form
+proof capture --app my-app --command "npm test" --mode terminal --fail-on-error
+
+# Env form (useful when you can't change the command line)
+PROOF_FAIL_ON_ERROR=1 proof capture --app my-app --command "npm test" --mode terminal
+```
+
+With either set, the CLI still records the run and prints the full JSON, then exits with the wrapped command's exit code. In multi-capture mode it exits with the first non-zero code encountered.
+
+This replaces the old sentinel-file workaround (`--command "npm test; echo $? > .status"`).
+
 ## Error handling
 
-Errors are output as JSON to stderr:
+Errors (bad input, missing manifest, spawn failure) are output as JSON to stderr:
 
 ```json
 { "error": "No proof.json found — run capture() first" }
 ```
 
-The exit code is `1` on error, `0` on success.
+The CLI exit code is `1` on a proof error and `0` on success. Note the distinction: a *proof error* (proof itself could not run) is different from the *wrapped command's* exit code, which is reported per-recording as `exitCode` and only propagated to the process exit when `--fail-on-error` / `PROOF_FAIL_ON_ERROR=1` is set.
 
 ## Environment variables
 
@@ -225,3 +249,4 @@ The exit code is `1` on error, `0` on success.
 |----------|-------------|
 | `PROOF_DIR` | Override default proof directory (same as `--dir`) |
 | `PROOF_MODE` | Override auto-detection (`browser` or `terminal`) |
+| `PROOF_FAIL_ON_ERROR` | Set to `1` to exit with the wrapped command's exit code (same as `--fail-on-error`) |

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.20260803.0
+
+- **fix**: `proof capture` swallowed the wrapped command's exit code — `proof capture --command "npm test"` exited `0` even when the test suite failed, silently defeating any CI or pre-push gate built on it. The exit code was recorded internally by each mode and then dropped. It is now captured in all three modes (terminal, browser, simulator) and returned on the `Recording` (`exitCode`) and persisted in `proof.json` (`ProofEntry.exitCode`, optional so older manifests still parse). Signal-kills (`code === null`) and spawn failures are normalized to a non-zero code, so `exitCode === 0` reliably means success.
+- **feat**: `--fail-on-error` flag (and `PROOF_FAIL_ON_ERROR=1` env equivalent) makes `proof capture` exit with the wrapped command's exit code instead of `0`. Default behavior is unchanged — capture succeeding and the wrapped command succeeding are distinct, so dropping proof into a pipeline never changes its outcome unless you opt in. In JSON multi-capture mode the CLI emits the full JSON for every capture, then exits with the first non-zero code encountered. This replaces the old `--command "npm test; echo $? > .status"` sentinel-file workaround.
+- **feat**: `proof report` now shows a pass/fail status per entry (derived from `exitCode`; entries without one render as "—", never as failures) plus an overall verdict line at the top, in both markdown and HTML formats.
+- **feat**: SDK parity — the TypeScript `Recording` gains `exitCode: number` and the Python `Recording` gains `exit_code: Optional[int]`. (The Go SDK lives in a separate repo, `automazeio/proof-go`, and needs a matching change.)
+- **note**: Browser mode still throws when no video file is produced, but a non-zero Playwright exit with a video present is now treated as a recorded failure (returned with its `exitCode`), not an error.
+
 ## 0.20260715.0
 
 - **fix**: `proof --version` (and any packaged run) crashed on every non-CI machine because Bun's bundler inlined `__dirname` as the build machine's absolute path (`/home/runner/work/proof/proof/src`), which does not exist elsewhere. The version is now injected at build time via a `__PROOF_VERSION__` define for both the npm bundle and the standalone compiled binary (the compiled binary has no `package.json` on disk to read), with a runtime `import.meta.url` fallback for unbundled dev runs. Added a `--version` regression test.

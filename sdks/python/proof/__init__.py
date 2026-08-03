@@ -8,7 +8,7 @@ import subprocess
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
-__version__ = "0.20260313.0"
+__version__ = "0.20260803.0"
 
 INSTALL_HELP = (
     "proof CLI not found on PATH. Install it:\n\n"
@@ -33,6 +33,9 @@ class Recording:
     mode: str
     duration: int
     label: Optional[str] = None
+    #: Exit code of the wrapped command (``0`` = success, non-zero = failure).
+    #: ``None`` only when captured by a proof CLI predating exit-code support.
+    exit_code: Optional[int] = None
 
 
 class Proof:
@@ -87,6 +90,7 @@ class Proof:
             mode=rec["mode"],
             duration=rec["duration"],
             label=rec.get("label"),
+            exit_code=rec.get("exitCode"),
         )
 
     def report(

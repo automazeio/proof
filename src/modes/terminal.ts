@@ -56,6 +56,8 @@ export async function captureTerminal(
 
     proc.on("close", (code) => { exitCode = code; resolve(); });
     proc.on("error", (err) => {
+      // Spawn failure (e.g. shell missing): surface a non-zero code, not null.
+      exitCode = 1;
       events.push({
         time: (Date.now() - startTime) / 1000,
         data: `\x1b[31mError: ${err.message}\x1b[0m\n`,
@@ -63,6 +65,9 @@ export async function captureTerminal(
       resolve();
     });
   });
+
+  // Normalize: a signal-kill reports `code === null`; treat that as a failure.
+  const resolvedExitCode = exitCode ?? 1;
 
   // Trim dead time: shift all events so first output starts at t=0
   if (events.length > 0) {
@@ -112,6 +117,7 @@ export async function captureTerminal(
       mode: "terminal",
       duration,
       label,
+      exitCode: resolvedExitCode,
     };
   }
 
@@ -120,6 +126,7 @@ export async function captureTerminal(
     mode: "terminal",
     duration,
     label,
+    exitCode: resolvedExitCode,
   };
 }
 

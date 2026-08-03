@@ -169,11 +169,17 @@ export async function captureVisual(
 
   const duration = await getVideoDuration(finalPath);
 
+  // A non-zero Playwright exit with a video present is a *recorded failure*,
+  // not an error — return the Recording so the failing run is still captured.
+  // `code === null` (signal-kill) is normalized to a non-zero code.
+  const resolvedExitCode = exitCode ?? 1;
+
   return {
     path: finalPath,
     mode: "browser",
     duration,
     label,
+    exitCode: resolvedExitCode,
   };
 }
 
