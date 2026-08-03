@@ -29,10 +29,15 @@ recording = p.capture(
     label="unit-tests",
 )
 
-print(recording.path)      # /abs/path/unit-tests-143012.html
-print(recording.duration)  # 4300
+print(recording.path)       # /abs/path/unit-tests-143012.html
+print(recording.duration)   # 4300
+print(recording.exit_code)  # 0 (exit code of the wrapped command)
 
 p.report()
+
+# capture() records the run even when the command fails — gate on the code:
+if recording.exit_code != 0:
+    raise SystemExit(recording.exit_code)
 ```
 
 ### pytest fixture
@@ -62,3 +67,4 @@ def proof_session():
 - `mode: str`
 - `duration: int`
 - `label: str | None`
+- `exit_code: int | None` — wrapped command's exit code (0 = success; `None` only from a proof CLI predating this field)

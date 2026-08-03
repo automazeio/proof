@@ -29,10 +29,15 @@ class TestRecording:
         assert r.mode == "terminal"
         assert r.duration == 1200
         assert r.label is None
+        assert r.exit_code is None
 
     def test_with_label(self):
         r = Recording(path="/tmp/test.html", mode="terminal", duration=500, label="unit")
         assert r.label == "unit"
+
+    def test_with_exit_code(self):
+        r = Recording(path="/tmp/test.html", mode="terminal", duration=500, exit_code=3)
+        assert r.exit_code == 3
 
 
 class TestProofInit:
@@ -71,6 +76,7 @@ class TestCapture:
                 "mode": "terminal",
                 "duration": 2400,
                 "label": "unit",
+                "exitCode": 0,
             }]
         })
 
@@ -81,6 +87,7 @@ class TestCapture:
             assert rec.mode == "terminal"
             assert rec.duration == 2400
             assert rec.label == "unit"
+            assert rec.exit_code == 0
 
             call_args = mock_run.call_args
             assert call_args[0][0] == ["/usr/local/bin/proof", "--json"]
@@ -117,6 +124,25 @@ class TestCapture:
             assert payload["description"] == "api tests"
             assert payload["label"] == "api"
 
+    def test_capture_records_non_zero_exit_code(self):
+        p = _make_proof()
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = json.dumps({
+            "recordings": [{
+                "path": "/tmp/fail.html",
+                "mode": "terminal",
+                "duration": 900,
+                "label": "fail",
+                "exitCode": 3,
+            }]
+        })
+
+        # A failing wrapped command is a recorded result, not an SDK error.
+        with patch("proof.subprocess.run", return_value=mock_result):
+            rec = p.capture(command="exit 3")
+            assert rec.exit_code == 3
+
     def test_capture_cli_error(self):
         p = _make_proof()
         mock_result = MagicMock()
@@ -143,7 +169,7 @@ class TestReport:
         p = _make_proof()
         mock_result = MagicMock()
         mock_result.returncode = 0
-        mock_result.stdout = json.dumps({"path": "/tmp/report.md"})
+        mock_result.stdout = json.dumps({"paths": ["/tmp/report.md"]})
 
         with patch("proof.subprocess.run", return_value=mock_result) as mock_run:
             path = p.report()
@@ -157,12 +183,24 @@ class TestReport:
         p = _make_proof(proof_dir="./evidence", run="v1")
         mock_result = MagicMock()
         mock_result.returncode = 0
-        mock_result.stdout = json.dumps({"path": ["/tmp/report.md", "/tmp/report.html"]})
+        mock_result.stdout = json.dumps({"paths": ["/tmp/report.md", "/tmp/report.html"]})
 
         with patch("proof.subprocess.run", return_value=mock_result) as mock_run:
             result = p.report(format=["md", "html"])
 
+            # A list format request returns the list of paths.
+            assert result == ["/tmp/report.md", "/tmp/report.html"]
             payload = json.loads(mock_run.call_args[1]["input"])
             assert payload["format"] == ["md", "html"]
             assert payload["proofDir"] == "./evidence"
             assert payload["run"] == "v1"
+
+    def test_report_single_format_returns_string(self):
+        p = _make_proof()
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = json.dumps({"paths": ["/tmp/report.html"]})
+
+        with patch("proof.subprocess.run", return_value=mock_result):
+            result = p.report(format="html")
+            assert result == "/tmp/report.html"

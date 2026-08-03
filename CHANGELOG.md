@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20260803.1
+
+- **fix**: Python SDK `report()` crashed with `KeyError: 'path'`. The CLI's report output changed from `{path}` to `{paths: [...]}` back in 0.20260314.0, but the Python wrapper was never updated (its tests mocked the old shape, hiding the break). `report()` now reads `paths`, returning a list when multiple formats are requested and a single string otherwise, matching the TypeScript SDK. The Go SDK (`automazeio/proof-go`) had the identical bug and is fixed in its `v0.20260803.0` tag.
+- **feat**: Go SDK `Recording` gains `ExitCode` (shipped in `automazeio/proof-go` `v0.20260803.0`), completing exit-code parity across all four interfaces (CLI, TypeScript, Python, Go).
+
 ## 0.20260803.0
 
 - **fix**: `proof capture` swallowed the wrapped command's exit code — `proof capture --command "npm test"` exited `0` even when the test suite failed, silently defeating any CI or pre-push gate built on it. The exit code was recorded internally by each mode and then dropped. It is now captured in all three modes (terminal, browser, simulator) and returned on the `Recording` (`exitCode`) and persisted in `proof.json` (`ProofEntry.exitCode`, optional so older manifests still parse). Signal-kills (`code === null`) and spawn failures are normalized to a non-zero code, so `exitCode === 0` reliably means success.

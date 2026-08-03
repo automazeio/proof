@@ -1,6 +1,6 @@
 {
   "name": "@automaze/proof",
-  "version": "0.20260803.0",
+  "version": "0.20260803.1",
   "description": "Visual proof of work for automated code changes",
   "type": "module",
   "main": "dist/index.js",

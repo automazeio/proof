@@ -8,7 +8,7 @@ import subprocess
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
-__version__ = "0.20260803.0"
+__version__ = "0.20260803.1"
 
 INSTALL_HELP = (
     "proof CLI not found on PATH. Install it:\n\n"
@@ -110,7 +110,12 @@ class Proof:
             payload["format"] = format
 
         result = self._call(payload)
-        return result["path"]
+        # The CLI emits a "paths" array. Mirror the TS SDK: return the list
+        # when multiple formats were requested, else the single path.
+        paths = result["paths"]
+        if isinstance(format, list):
+            return paths
+        return paths[0]
 
     def _call(self, payload: dict) -> dict:
         proc = subprocess.run(
