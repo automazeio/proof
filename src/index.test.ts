@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach, setSystemTime } from "bun:test";
 import { Proof, type Recording } from "./index";
 import { join } from "path";
 import { mkdtemp, readFile, rm } from "fs/promises";
@@ -342,6 +342,32 @@ describe("Proof", () => {
       expect(manifest.entries).toHaveLength(2);
       expect(manifest.entries[0].label).toBe("first");
       expect(manifest.entries[1].label).toBe("second");
+    });
+
+    test("same-label captures in the same second keep separate artifacts", async () => {
+      setSystemTime(new Date(2026, 0, 2, 10, 20, 30));
+      try {
+        const proof = new Proof({
+          appName: "test-app",
+          proofDir: tempDir,
+          run: "test-run",
+        });
+
+        const first = await proof.capture({ command: "echo FIRST", mode: "terminal" }) as Recording;
+        const second = await proof.capture({ command: "echo SECOND", mode: "terminal" }) as Recording;
+
+        expect(second.path).not.toBe(first.path);
+        expect(await readFile(first.path.replace(".html", ".cast"), "utf-8")).toContain("FIRST");
+        expect(await readFile(second.path.replace(".html", ".cast"), "utf-8")).toContain("SECOND");
+
+        const manifest = JSON.parse(await readFile(join(first.path, "..", "proof.json"), "utf-8"));
+        expect(manifest.entries.map((e: { artifact: string }) => e.artifact)).toEqual([
+          "terminal-102030.html",
+          "terminal-102030-2.html",
+        ]);
+      } finally {
+        setSystemTime();
+      }
     });
   });
 

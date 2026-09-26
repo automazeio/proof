@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import { join, basename } from "path";
 import { tmpdir } from "os";
 import { existsSync } from "fs";
@@ -132,7 +132,13 @@ export class Proof {
     const mode = await this.resolveMode(options.mode);
     const ts = this.formatTimestamp(new Date());
     const label = options.label ?? mode;
-    const filePrefix = `${label}-${ts}`;
+    // Captures with the same label in the same second would otherwise share a
+    // prefix and overwrite each other's artifacts.
+    const existing = await readdir(runDir);
+    let filePrefix = `${label}-${ts}`;
+    for (let n = 2; existing.some((f) => f.startsWith(`${filePrefix}.`)); n++) {
+      filePrefix = `${label}-${ts}-${n}`;
+    }
 
     // Resolve single device/viewport strings for browser mode
     const singleDevice = typeof options.device === "string" ? options.device : undefined;
